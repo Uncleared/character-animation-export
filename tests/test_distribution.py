@@ -72,6 +72,20 @@ class DistributionTests(unittest.TestCase):
             (root / "Assets").mkdir()
             with self.assertRaises(ValueError):
                 core.export_root(root / "Assets" / "Exports")
+            self.assertEqual(core.export_root(root / "Assets" / "Exports", allow_assets=True), (root / "Assets" / "Exports").resolve())
+            self.assertEqual(core.staging_root(root / "Assets" / "Exports").parent, root)
+
+    def test_event_editor_is_an_independent_optional_installer(self):
+        def paths(data):
+            with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as archive:
+                return [archive.extractfile(item).read().decode() for item in archive.getmembers() if item.name.endswith('/pathname')]
+        normal=paths(packaging.unity_package())
+        independent=paths(packaging.unity_package(event_only=True))
+        self.assertFalse(any('/Events/' in path or path.endswith('/Events') for path in normal))
+        self.assertTrue(any(path.endswith('/Events/AnimationEventClipIO.cs') for path in independent))
+        self.assertFalse(any('/Direct/' in path or path.endswith('AnimationExportLibrary.cs') for path in independent))
+        asmdef=json.loads((packaging.SOURCE/'Editor/Events/CharacterAnimationEvents.Editor.asmdef').read_text())
+        self.assertFalse(asmdef.get('references'))
 
     def test_example_fixture_inventory_has_verified_fbx_files(self):
         fixtures = packaging.SOURCE / "Blender~" / "Fixtures"

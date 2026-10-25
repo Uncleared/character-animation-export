@@ -1,0 +1,5 @@
+{
+  "name": "CharacterAnimationEvents.Editor",
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

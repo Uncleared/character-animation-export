@@ -1,0 +1,6 @@
+.event-editor { padding: 8px; }
+.button-row { flex-direction: row; margin-bottom: 6px; }
+.button-row > Button { flex-grow: 1; }
+.clip-preview { min-height: 175px; margin-top: 6px; }
+.event-list { flex-grow: 1; margin-top: 8px; margin-bottom: 8px; }
+.event-list Foldout { margin-bottom: 4px; }

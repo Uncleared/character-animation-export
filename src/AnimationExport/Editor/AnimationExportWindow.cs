@@ -33,7 +33,7 @@ namespace CharacterAnimationExport
         double previewClock;
         string Preference => "CharacterAnimationExport.Library." + Application.dataPath;
 
-        [MenuItem("Tools/Character Animation Export")]
+        [MenuItem("Tools/Legacy/Character Animation Library")]
         public static void Open()
         {
             var window = GetWindow<AnimationExportWindow>();

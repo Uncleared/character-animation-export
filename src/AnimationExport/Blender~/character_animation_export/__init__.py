@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 1, 0),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 0),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 
@@ -18,6 +18,10 @@ _track_choices = {}
 
 def settings_for(scene, create=True):
     selector = scene.character_animation_export
+    if not selector.rig and create:
+        rigs = [obj for obj in scene.objects if obj.type == 'ARMATURE']
+        if len(rigs) == 1:
+            selector.rig = rigs[0]
     if not selector.rig:
         return None
     profile = next((p for p in selector.profiles if p.rig == selector.rig), None)
@@ -93,7 +97,7 @@ def sources(settings):
 
 def _assign(record, source):
     old_name = record.source_name
-    if not record.export_name or record.export_name == old_name:
+    if not record.export_name or (not record.published_name and record.export_name == old_name):
         record.export_name = source['name']
     record.action = source['action']
     record.track_name = source['track']
@@ -173,18 +177,20 @@ def _take_name(path):
     return stacks[0].props[1].split(b'\x00\x01')[0].decode('utf-8')
 
 
-def export_package_steps(context, settings, cancel=None):
+def export_package_steps(context, settings, cancel=None, direct=False):
     global _busy
     if settings is None:
-        raise ValueError('Choose a character armature in Setup.')
+        raise ValueError('Choose the character rig.')
     refresh(settings)
     core.validate_names(settings.clips)
     scene = context.scene
     if not settings.rig:
-        raise ValueError('Choose a character armature in Setup.')
+        raise ValueError('Choose the character rig.')
     if not settings.output_folder:
-        raise ValueError('Choose an output folder in Setup.')
-    root = core.export_root(bpy.path.abspath(settings.output_folder))
+        raise ValueError('Choose an Export Folder with the folder button.')
+    if settings.output_folder.startswith('//') and not bpy.data.filepath:
+        raise ValueError('Save the .blend first or choose an absolute Export Folder.')
+    root = core.export_root(bpy.path.abspath(settings.output_folder), allow_assets=direct)
     inventory = sources(settings)
     selected_track = None
     if settings.source_mode == 'NLA' and settings.track_index != 'ALL':
@@ -196,6 +202,15 @@ def export_package_steps(context, settings, cancel=None):
                and (selected_track is None or r.track_name == selected_track)]
     if not checked:
         raise ValueError('Check at least one available clip to export.')
+    source_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
+    if direct and settings.source_file and source_file != settings.source_file:
+        raise ValueError('This is a renamed or copied .blend. In Settings, choose Keep Existing Outputs or New Character Export once.')
+    if direct:
+        for record in checked:
+            if record.published_name and record.export_name != record.published_name:
+                record.clip_id = core.new_id()
+                record.published_name = ''
+        core.validate_direct_targets(root, settings.profile_id, [(r.clip_id, r.export_name) for r in checked])
     if any(r.enabled and not r.retired and r.state == 'AMBIGUOUS' for r in settings.clips):
         raise ValueError('Relink ambiguous clip sources before exporting.')
     rig = settings.rig
@@ -217,16 +232,23 @@ def export_package_steps(context, settings, cancel=None):
     if missing:
         raise ValueError('Include these objects in the active view layer: ' + ', '.join(missing))
     previous = {}
-    manifest_path = root / 'animation-export.json'
+    manifest_path = root / core.metadata_file(settings.profile_id) if direct else root / 'animation-export.json'
     if manifest_path.exists():
         previous = json.loads(manifest_path.read_text(encoding='utf-8'))
         if previous.get('profileId') != settings.profile_id:
             raise ValueError('This folder belongs to another export profile. Choose a different folder.')
+        if direct and not settings.source_file and previous.get('sourceFile') and previous['sourceFile'] != source_file:
+            settings.source_file = previous['sourceFile']
+            raise ValueError('These outputs belong to another saved .blend. Choose Keep Existing Outputs or New Character Export in Settings.')
     old_records = {r['id']: r for r in previous.get('clips', [])}
     fps = scene.render.fps / scene.render.fps_base
-    manifest = dict(schemaVersion=1, profileId=settings.profile_id, characterName=rig.name,
+    manifest = dict(schemaVersion=core.DIRECT_SCHEMA if direct else 1, profileId=settings.profile_id, characterName=rig.name,
                     publicationId=core.new_id(), generation=int(previous.get('generation', 0)) + 1,
                     blenderVersion=bpy.app.version_string, fps=fps, clips=[], warnings=[])
+    if direct:
+        roots = [bone for bone in rig.data.bones if bone.parent is None]
+        manifest['rootBone'] = roots[0].name if len(roots) == 1 else ''
+        manifest['sourceFile'] = source_file
     missing_libraries = [library.filepath for library in bpy.data.libraries
                          if not Path(bpy.path.abspath(library.filepath, library=library.parent)).exists()]
     if missing_libraries:
@@ -241,7 +263,7 @@ def export_package_steps(context, settings, cancel=None):
     _busy = True
     context.window_manager.progress_begin(0, len(checked))
     try:
-        with tempfile.TemporaryDirectory(prefix='.animation-bake-', dir=root) as staging:
+        with tempfile.TemporaryDirectory(prefix='.animation-bake-', dir=core.staging_root(root) if direct else root) as staging:
             staging = Path(staging)
             staged = {}
             for index, record in enumerate(checked):
@@ -265,8 +287,8 @@ def export_package_steps(context, settings, cancel=None):
                 for obj in included:
                     obj.select_set(True)
                 context.view_layer.objects.active = rig
-                relative = 'clips/' + record.clip_id + '.fbx'
-                path = staging / (record.clip_id + '.fbx')
+                relative = record.export_name + '.fbx' if direct else 'clips/' + record.clip_id + '.fbx'
+                path = staging / (record.export_name + '.fbx' if direct else record.clip_id + '.fbx')
                 bpy.ops.export_scene.fbx(filepath=str(path), check_existing=False, use_selection=True,
                     use_visible=False, use_active_collection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
                     bake_anim=True, bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False,
@@ -289,8 +311,18 @@ def export_package_steps(context, settings, cancel=None):
                             state='removed' if record.retired or record.state != 'READY' else 'present',
                             exported=record in checked)
                 manifest['clips'].append(item)
-            core.publish(root, manifest, staged)
-        settings.last_report = f"Exported {len(checked)} clips. Package: {root / 'animation-export.json'}"
+            if direct:
+                current_ids = {row['id'] for row in manifest['clips']}
+                for clip_id, row in old_records.items():
+                    if clip_id not in current_ids:
+                        manifest['clips'].append(dict(row, state='removed', exported=False))
+                core.publish_direct(root, manifest, staged)
+                for record in checked:
+                    record.published_name = record.export_name
+                settings.source_file = source_file
+            else:
+                core.publish(root, manifest, staged)
+        settings.last_report = f"Exported {len(checked)} clips." if direct else f"Exported {len(checked)} clips. Package: {root / 'animation-export.json'}"
         if manifest['warnings']:
             settings.last_report += '\nWarning: missing linked libraries; review the package report.'
         return manifest
@@ -321,12 +353,22 @@ def export_package(context, settings, cancel=None):
             return finished.value
 
 
+def export_direct(context, settings, cancel=None):
+    steps = export_package_steps(context, settings, cancel, direct=True)
+    while True:
+        try:
+            next(steps)
+        except StopIteration as finished:
+            return finished.value
+
+
 class CAEClip(bpy.types.PropertyGroup):
     clip_id: StringProperty()
     action: PointerProperty(type=bpy.types.Action)
     source_name: StringProperty()
     track_name: StringProperty()
     export_name: StringProperty(name='Clip Name')
+    published_name: StringProperty()
     enabled: BoolProperty(name='Export', default=True)
     retired: BoolProperty(default=False)
     state: StringProperty(default='READY')
@@ -343,12 +385,15 @@ class CAESettings(bpy.types.PropertyGroup):
     track_index: EnumProperty(name='Clip Track', items=_track_items)
     output_folder: StringProperty(name='Export Folder', subtype='DIR_PATH')
     profile_id: StringProperty()
+    source_file: StringProperty()
+    delivery: EnumProperty(name='Delivery', items=[('DIRECT', 'FBX Files', 'Export directly into the chosen folder'),
+        ('LEGACY', 'Legacy Package', 'For existing version 0.1 library projects only')], default='DIRECT')
     clips: CollectionProperty(type=CAEClip)
     active_clip: IntProperty()
     scale_mode: EnumProperty(name='Scaling', items=[('FBX_SCALE_ALL', 'Unity Blend Compatible', 'Use FBX All scaling'),
         ('FBX_SCALE_NONE', 'All Local', 'Use local scaling for a matching model export')], default='FBX_SCALE_ALL')
     leaf_bones: BoolProperty(name='Export End Bones', default=True)
-    show_setup: BoolProperty(name='Setup', default=True)
+    show_setup: BoolProperty(name='Settings', default=False)
     show_removed: BoolProperty(name='Show Removed Clips', default=False)
     last_report: StringProperty()
 
@@ -377,15 +422,24 @@ class CAE_OT_refresh(bpy.types.Operator):
 
 class CAE_OT_export(bpy.types.Operator):
     bl_idname = 'cae.export_checked'
-    bl_label = 'Export Checked Clips'
+    bl_label = 'Export'
     def execute(self, context):
+        profile = settings_for(context.scene)
+        if profile is None:
+            self.report({'ERROR'}, 'Choose the character rig.')
+            return {'CANCELLED'}
+        if _busy:
+            self.report({'INFO'}, 'An export is already running.')
+            return {'CANCELLED'}
         if not bpy.app.background:
-            self.steps = export_package_steps(context, settings_for(context.scene))
+            profile = settings_for(context.scene)
+            self.steps = export_package_steps(context, profile, direct=profile is not None and profile.delivery == 'DIRECT')
             self.timer = context.window_manager.event_timer_add(0.1, window=context.window)
             context.window_manager.modal_handler_add(self)
             return {'RUNNING_MODAL'}
         try:
-            export_package(context, settings_for(context.scene))
+            profile = settings_for(context.scene)
+            (export_direct if profile and profile.delivery == 'DIRECT' else export_package)(context, profile)
             self.report({'INFO'}, settings_for(context.scene).last_report)
             return {'FINISHED'}
         except Exception as exc:
@@ -439,6 +493,33 @@ class CAE_OT_clip(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class CAE_OT_source_identity(bpy.types.Operator):
+    bl_idname = 'cae.source_identity'
+    bl_label = 'Confirm Export Identity'
+    bl_options = {'UNDO'}
+    new_profile: BoolProperty(default=False)
+    def execute(self, context):
+        profile = settings_for(context.scene)
+        if self.new_profile:
+            profile.profile_id = core.new_id()
+            profile.output_folder = ''
+            for clip in profile.clips:
+                clip.clip_id = core.new_id()
+                clip.published_name = ''
+        profile.source_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
+        return {'FINISHED'}
+
+
+class CAE_OT_open_folder(bpy.types.Operator):
+    bl_idname = 'cae.open_folder'
+    bl_label = 'Open Export Folder'
+    def execute(self, context):
+        folder = settings_for(context.scene).output_folder
+        if folder:
+            bpy.ops.wm.path_open(filepath=bpy.path.abspath(folder))
+        return {'FINISHED'}
+
+
 def _relink_items(_self, _context):
     return _relink_choices
 
@@ -473,15 +554,17 @@ class CAE_UL_clips(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, _icon, _active_data, _active_propname, index):
         row = layout.row(align=True)
         row.prop(item, 'enabled', text='')
-        row.prop(item, 'export_name', text='', emboss=False)
+        row.label(text=item.export_name)
         row.label(text='Removed' if item.retired else (f"{(item.end-item.start)/(context.scene.render.fps/context.scene.render.fps_base):.2f}s" if item.state == 'READY' else item.state.title()))
-        op = row.operator('cae.clip_operation', text='', icon='HIDE_OFF')
-        op.index, op.operation = index, 'PREVIEW'
+        if _data.show_setup:
+            op = row.operator('cae.clip_operation', text='', icon='HIDE_OFF')
+            op.index, op.operation = index, 'PREVIEW'
         if item.state != 'READY':
             op = row.operator('cae.relink', text='', icon='LINKED')
             op.index = index
-        op = row.operator('cae.clip_operation', text='', icon='LOOP_BACK' if item.retired else 'X')
-        op.index, op.operation = index, 'RESTORE' if item.retired else 'REMOVE'
+        if _data.show_setup:
+            op = row.operator('cae.clip_operation', text='', icon='LOOP_BACK' if item.retired else 'X')
+            op.index, op.operation = index, 'RESTORE' if item.retired else 'REMOVE'
 
 
 class CAE_PT_export(bpy.types.Panel):
@@ -492,33 +575,45 @@ class CAE_PT_export(bpy.types.Panel):
     bl_category = 'Animation Export'
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene.character_animation_export, 'rig')
+        layout.enabled = not _busy
         settings = settings_for(context.scene, create=False)
         if settings is None:
-            layout.operator('cae.refresh', text='Find Character Rig')
+            layout.prop(context.scene.character_animation_export, 'rig')
+            layout.operator('cae.refresh', text='Find Rig')
             return
-        layout.prop(settings, 'show_setup', emboss=False, icon='TRIA_DOWN' if settings.show_setup else 'TRIA_RIGHT')
+        layout.prop(settings, 'output_folder')
+        layout.template_list('CAE_UL_clips', '', settings, 'clips', settings, 'active_clip', rows=7)
+        button = layout.row()
+        button.scale_y = 1.5
+        button.operator('cae.export_checked', text='Export', icon='EXPORT')
+        if settings.last_report:
+            layout.label(text=settings.last_report.splitlines()[0][:100])
+        row = layout.row()
+        row.prop(settings, 'show_setup', emboss=False, icon='PREFERENCES')
+        row.operator('cae.open_folder', text='', icon='FILE_FOLDER')
         if settings.show_setup:
             box = layout.box()
+            box.prop(context.scene.character_animation_export, 'rig')
             box.prop(settings, 'export_collection')
             box.prop(settings, 'source_mode')
             if settings.source_mode == 'NLA':
                 box.prop(settings, 'track_index')
             else:
                 box.label(text='Prop tracks use the action\'s source frames.', icon='INFO')
-            box.prop(settings, 'output_folder')
+            box.prop(settings, 'show_removed')
+            box.operator('cae.refresh', text='Refresh Clips', icon='FILE_REFRESH')
+            if settings.clips and settings.active_clip < len(settings.clips):
+                box.prop(settings.clips[settings.active_clip], 'export_name', text='Export Name')
+            current_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
+            if settings.source_file and settings.source_file != current_file:
+                box.label(text='Renamed or copied .blend:', icon='INFO')
+                box.operator('cae.source_identity', text='Keep Existing Outputs').new_profile = False
+                box.operator('cae.source_identity', text='New Character Export').new_profile = True
             advanced = box.box()
             advanced.label(text='Matching model export settings')
             advanced.prop(settings, 'scale_mode')
             advanced.prop(settings, 'leaf_bones')
-        layout.template_list('CAE_UL_clips', '', settings, 'clips', settings, 'active_clip', rows=7)
-        layout.prop(settings, 'show_removed')
-        layout.operator('cae.export_checked', icon='EXPORT')
-        layout.operator('cae.refresh', icon='FILE_REFRESH')
-        if settings.last_report:
-            for part in settings.last_report.splitlines():
-                layout.label(text=part[:100])
-        layout.label(text='NLA/All Actions export off; combined bake on.')
+            advanced.prop(settings, 'delivery')
 
 
 def _timer():
@@ -539,7 +634,7 @@ def _timer():
     return 1.0
 
 
-_classes = (CAEClip, CAESettings, CAESceneSettings, CAE_OT_refresh, CAE_OT_export, CAE_OT_clip, CAE_OT_relink, CAE_UL_clips, CAE_PT_export)
+_classes = (CAEClip, CAESettings, CAESceneSettings, CAE_OT_refresh, CAE_OT_export, CAE_OT_clip, CAE_OT_source_identity, CAE_OT_open_folder, CAE_OT_relink, CAE_UL_clips, CAE_PT_export)
 
 
 def register():

@@ -1,24 +1,26 @@
-# Verification for 0.1.0
+# Verification for 0.2.0
 
-The original prototype was checked on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1.
+Checked on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1. The new direct workflow was exercised in disposable Unity projects before installation in the larger game project.
 
 | Check | Observed result |
 | --- | --- |
-| Blender exporter suite | 49 checks passed on each tested Blender version. |
-| Unity native EditMode suite | 14/14 passed after fixes; final run 35.56 seconds. |
-| Different generated rigs | Nested prop rotation and relative shape keys present; expected coordinate conversion and translation magnitude preserved at scales 0.01, 1 and 2.5. |
-| Import settings | Root bake defaults, explicit overrides and all-transform masks checked, including a newly added child. |
-| Event refresh | GUID, name, loop/mirror settings and full event payloads retained; event edits left FBX bytes and import dependency unchanged. |
-| Duration changes | Pending review keeps the old native motion; explicit scaling applies the new duration and cue times. |
-| Clip lifecycle | Used deletion blocked; selected replacement retained other transition fields; old packages did not resurrect deleted clips; occupied recovery blocked; free recovery and rename preserved GUIDs. |
-| Representative Humanoid | A nested lid opened about 139 degrees; lid/lever curves and all 12 original Unity events survived native copied-Avatar import and refresh. |
-| Unity UI | Library list, event fields and isolated preview rendered. |
-| Player assembly inventory | Companion and test assemblies excluded from runtime assemblies. |
+| Direct Blender export | 23 checks passed on each Blender version: saved folder/identity, friendly files inside Assets, strip ranges/rename, nested props, cancellation, unknown-output protection and transient/permanent file locks. |
+| Legacy Blender regression | 49 checks passed on Blender 5.0.1 after the direct-workflow changes. |
+| Direct Unity semantics | 38 assertions passed: three bake defaults, full masks/new props, shape keys, exact native event seconds and payloads, loop/mirror preservation, stable GUID/local IDs and Animator/asset references. |
+| Automatic Unity callbacks | First import and new-prop update configured themselves without calling reconciliation from the test; metadata then remained stable. |
+| Shortened motion | Out-of-range events retained their old data/import bounds, recovery metadata was saved outside Assets, and repeated processing converged. |
+| Optional event editor | Native .anim and selected FBX take edits passed, other-take events/settings stayed unchanged, and stale drafts were blocked. A separate project with only the event installer successfully saved a native event. |
+| Representative Humanoid | Valid copied Avatar; nested lid/lever rotation curves retained. Sampled lid opened about 132 degrees during the 15.87-second motion. |
+| Distribution | Five Python checks passed for reproducible packages, GUIDs, direct Assets support, legacy fixtures and independent event-installer boundaries. |
 
-The representative Humanoid and its game-specific files are not distributed. The repository includes original generated geometry and fixtures instead.
+The representative Humanoid, production assets, Avatar mapping and local recovery data are not distributed. The public example and fixture generator use original generated geometry.
 
-The first native checks found and corrected an FBX take-origin slicing issue and Unity's cached path lookup for deleted GUIDs. Generic fixtures use an explicit motion root because they deliberately contain no skinned rig mesh. The final source retains ambiguous-root checks rather than guessing from unrelated prop roots.
+The importer uses post-import callbacks and deferred, targeted configuration. Adding model preprocessing callbacks to the original prototype invalidated the large host project's FBX import cache; those callbacks were removed. An early path filter does not prevent that Unity cache invalidation. The final automatic-import behavior was verified separately in an isolated project.
 
-Native `.anim` size is still a limitation: the representative file was about 21.1 MB, compared with a 12.7 MB FBX. Full-project reference scans can take minutes. Material animation, simulations, arbitrary Blender-only behavior, other app versions and final animator/gameplay usability are not covered by these results.
+Native importer event times are normalized internally; the tool explicitly preserves seconds when clip duration changes. This protects timing data, but cannot infer whether an edited gesture now needs a differently placed cue. A shortened clip that excludes a cue requires correction; retaining its old import bounds cannot restore motion removed from the FBX.
 
-GitHub CI verifies the distribution and pure Python logic only. The prototype's final independent implementation review and human usability acceptance were still pending when 0.1.0 was published as a prerelease.
+Material animation, arbitrary Blender-only behavior/simulations, fractional strip boundaries, ambiguous reused-action relinks, other app versions and final animator/gameplay usability are outside these results. Custom Copy From Other masks are preserved rather than automatically replaced. Automatic reconfiguration waits until Edit Mode.
+
+The 0.1 legacy workflow previously passed 14 native Unity tests and 49 Blender checks on both Blender versions; see the legacy guide. Its native-clip size and full-project reference-scan cost still apply to that workflow.
+
+GitHub CI checks distribution and pure Python logic. It does not run Blender or Unity. This version is a prototype prerelease awaiting the animator's functional check and the final independent implementation review and human acceptance.

@@ -37,11 +37,17 @@ def version():
     return value
 
 
-def unity_package():
+def unity_package(event_only=False):
     files = {}
     seen = set()
-    metadata = [SOURCE.with_suffix(".meta"), SOURCE / "Editor.meta", SOURCE / "QuickStart.txt.meta"]
-    metadata += sorted((SOURCE / "Editor").rglob("*.meta"))
+    metadata = [SOURCE.with_suffix(".meta"), SOURCE / "Editor.meta"]
+    if event_only:
+        metadata += [SOURCE / "Editor" / "Events.meta"]
+        metadata += sorted((SOURCE / "Editor" / "Events").rglob("*.meta"))
+    else:
+        metadata += [SOURCE / "QuickStart.txt.meta"]
+        metadata += [path for path in sorted((SOURCE / "Editor").rglob("*.meta"))
+                     if "Events" not in path.relative_to(SOURCE / "Editor").parts and path.name != "Events.meta"]
     for meta in metadata:
         source = meta.with_suffix("")
         relative = "" if source == SOURCE else "/" + source.relative_to(SOURCE).as_posix()
@@ -80,6 +86,7 @@ def build(destination=None):
             "character_animation_export/" + path.name: path.read_bytes()
             for path in sorted(addon.glob("*.py"))}),
         f"CharacterAnimationExport-Unity-{release}.unitypackage": unity_package(),
+        f"AnimationEventEditor-{release}.unitypackage": unity_package(event_only=True),
     }
     bundle = dict(downloads)
     bundle.update({

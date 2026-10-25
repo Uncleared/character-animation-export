@@ -1,0 +1,5 @@
+{
+  "name": "CharacterAnimationExport.Direct.Editor",
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

@@ -1,33 +1,26 @@
-CHARACTER ANIMATION EXPORT — PROTOTYPE 0.1
+Character Animation Export 0.2.0 — Prototype
 
-For the animator
-1. In Blender 5.0 or 5.2, open Preferences > Add-ons > Install from Disk and select CharacterAnimationExport-0.1.0.zip. Enable Character Animation Export.
-2. Open the 3D View sidebar (N), then Animation Export. Choose the character rig (Find Character Rig chooses it if there is only one).
-3. In Setup choose NLA Strips, then All Character Tracks or a track filter. Object/prop NLA strips are evaluated with the character; only the chosen rig's strips define the clip list. An optional Objects and Props collection can include associated props outside the rig hierarchy. Its children are included automatically.
-4. Choose an export folder OUTSIDE the Unity project's Assets directory. Start with the Unity Blend Compatible transform preset when matching a model imported directly from Blender. Other model exports must use matching scale/end-bone settings.
-5. Check the clips to export and click Export Checked Clips. Ranges come from the strips, not the scene start/end fields. The FBX exporter uses All Actions OFF, NLA Strips OFF, Bake Animation ON. Authoring NLA remains active. Escape cancels between individual bakes; the prior package remains intact.
-6. Save the .blend normally to retain profiles and clip IDs. Profiles are stored in the scene so linked rigs need not be modified. Multiple rigs retain separate settings.
+BLENDER
+Install the inner Blender ZIP: Preferences > Add-ons > Install from Disk.
+In the 3D View: N > Animation Export.
+Choose Export Folder (inside Unity Assets is supported), check clips, press Export.
+Save the blend to remember the folder and clip choices.
+Settings contains rig/props, scale/end bones and advanced options.
 
-Actions mode is available for action-only files. Choose only the desired actions; associated object/prop tracks are sampled at those action frame ranges. A fully linked rig needs NLA mode or a local override before an action can be assigned. The source file is never automatically rescaled, rekeyed or saved.
+UNITY — ONCE PER CHARACTER
+Import CharacterAnimationExport-Unity-0.2.0.unitypackage.
+Select the export folder: Assets > Animation Import Settings.
+Choose Generic, or Humanoid with the matching Source Avatar.
+Bake Rotation/Y/XZ and the full prop mask default to ON.
+Future FBXs import normally; no library or JSON import operation is needed.
 
-The exported folder contains animation-export.json and UUID-named FBXs under clips. Give Unity the entire folder, not individual renamed FBXs. Friendly animation names are preserved in the manifest. Missing linked libraries are reported; resolve missing object/data links before trusting a complete character export. Armature/object transforms and relative shape keys are the intended data types; arbitrary material effects, simulations or custom Blender-only behavior do not automatically become FBX animation.
+EVENTS
+Unity's native FBX Animations > Events editor remains available.
+The optional AnimationEventEditor package adds Tools > Animation Event Editor.
+It works independently on ordinary .anim and imported FBX clips.
 
-For Unity
-1. Open Tools > Character Animation Export. Create a character library in a dedicated asset folder.
-2. In Setup choose Generic or Humanoid. Humanoid requires the matching model's Source Avatar. Generic detects a shared skin root or a single model root; unskinned rigs with several roots need their motion-node path once. This is a profile setting, not something to repeat per clip.
-3. Import Animation Package and choose animation-export.json. The tool owns a Generated folder beside the library. It keeps ordinary editable native .anim files separate from imported FBX sources.
-4. Automatic import defaults are ON: Bake Root Rotation/Y/XZ into Pose and include every transform in the import mask. Per-clip root and custom mask overrides are available. New children are included on the next managed import.
-5. Select a clip to preview it and its source model in an isolated preview scene. Scrub Preview Time, then Add Event at Preview Time. Edit the function/parameters and Save Events. Valid drafts are saved when switching clips; incomplete drafts must be completed or discarded. Event edits update the native clip only and do not reimport the source FBX. Copy Events From imports an existing clip's Unity events into a reviewable draft.
-6. Update from Last Package refreshes motion in place. Events, payload object references, gameplay names, asset GUIDs and native loop/mirror settings are retained. A duration change with events needs Keep Event Seconds or Scale Events with Duration. Out-of-range events are blocked. Preview cues after motion changes even if duration did not change. Animancer transition events are reported as separate normalized-time dependencies and are never edited by this tool.
+Unchecking/removing sources does not delete existing FBXs.
+Keep the automatically maintained AnimationExportData folder beside the FBXs.
+Existing libraries: Tools > Legacy > Character Animation Library.
 
-Clip lifecycle
-- Unchecked in Blender: excluded from that export. Existing Unity assets remain available.
-- Source strip/action removed: marked Removed in Blender in the library. Nothing is automatically deleted.
-- Archive: hide from the active list while keeping all game references. Show archived/deleted and Unarchive to restore the list entry.
-- Rename: incoming Blender names do not silently change the gameplay API. Keep Existing Gameplay Name, or scan usage and rename deliberately. Native clip filenames/names follow the gameplay name; GUIDs stay stable. Resolve story/code name candidates first.
-- Replace: scan usage, select exact referenced assets, select Replace With, then review the operation. Text-serialized Unity object references are patched narrowly and checked so unrelated file bytes remain unchanged. Binary assets and unresolved name-based uses need an Inspector/manual edit. The original clip is retained until a subsequent clean usage scan.
-- Delete: requires a fresh complete usage scan and human review of name-based/runtime usage. Used clips cannot be deleted. Deleted native/source files and metadata have recovery copies outside Assets, in .animation-export-recovery at the project root. Show archived/deleted > Restore Deleted Clip restores the original identity if its destination/GUID is free. Old packages do not automatically resurrect deleted clips.
-
-The prototype does not migrate any production character or replace game references automatically. Generated .anim files are managed motion outputs: author motion in Blender; event and loop/mirror edits belong in Unity. Motion refresh replaces local curve edits, with recovery copies retained. A full project usage scan can take several minutes in a large project; it shows progress and can be cancelled. Replacing the selected references checks only those files again. Deletion still needs a completed full usage scan.
-
-Measured representative Humanoid sample: native Humanoid motion includes the moving lid and lever, and preserves all 12 original Unity events. The sample follows the full source NLA strip (535–1011), so it is 15.867 seconds; the current game clip is trimmed three frames shorter. The native text .anim is about 21.1 MB versus 12.7 MB for its FBX. One event save took about 1.48 seconds and left the FBX unchanged; first import took about 6.43 seconds on this project. These are prototype measurements, not size or timing guarantees. The final Animator/gameplay feel and animator workflow still need human checks.
+Guide/downloads: https://github.com/Uncleared/character-animation-export
