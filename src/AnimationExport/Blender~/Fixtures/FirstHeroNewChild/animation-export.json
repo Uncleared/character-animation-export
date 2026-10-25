@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "profileId": "4ae3c18582c94889aa86534fe908c3f9",
+  "characterName": "FirstHero",
+  "publicationId": "d09e468665ac49139776053334d09e9c",
+  "generation": 4,
+  "blenderVersion": "5.2.1 LTS",
+  "fps": 30.0,
+  "clips": [
+    {
+      "id": "62546076f10c4af1b70ad722df4b4c8a",
+      "name": "Idle A",
+      "state": "present",
+      "enabled": true,
+      "exported": true,
+      "file": "clips/62546076f10c4af1b70ad722df4b4c8a.fbx",
+      "sha256": "8451d9abcb61aadeebdb93a98f75a555f3700a9250fd2ebaddf87a849bb5a9a5",
+      "takeName": "Scene",
+      "startFrame": 1.0,
+      "endFrame": 17.0,
+      "fps": 30.0,
+      "duration": 0.5333333333333333,
+      "objectPaths": [
+        "FirstHero",
+        "FirstHero/Portable Object/Nested Moving Lid",
+        "FirstHero/Portable Object/Nested Moving Lid/New Animated Child",
+        "FirstHero/Portable Object"
+      ]
+    },
+    {
+      "id": "23349c6cdf0f440398e912430be7f680",
+      "name": "Use Item",
+      "state": "present",
+      "enabled": true,
+      "exported": true,
+      "file": "clips/23349c6cdf0f440398e912430be7f680.fbx",
+      "sha256": "74717521204dd1ac762f480f9d96fb366bf69c0936b1c368d0964785b5deeadb",
+      "takeName": "Scene",
+      "startFrame": 21.0,
+      "endFrame": 32.0,
+      "fps": 30.0,
+      "duration": 0.36666666666666664,
+      "objectPaths": [
+        "FirstHero",
+        "FirstHero/Portable Object/Nested Moving Lid",
+        "FirstHero/Portable Object/Nested Moving Lid/New Animated Child",
+        "FirstHero/Portable Object"
+      ]
+    }
+  ],
+  "warnings": []
+}

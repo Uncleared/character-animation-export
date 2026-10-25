@@ -1,0 +1,37 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Require matching version tag
+        shell: bash
+        run: test "$GITHUB_REF_NAME" = "v$(tr -d '\r\n' < VERSION)"
+      - name: Test packaging and package guards
+        run: python -m unittest discover -s tests -v
+      - name: Build downloads
+        run: python tools/build_release.py
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          flags=()
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ "$version" == 0.* || "$version" == *-* ]]; then flags+=(--prerelease); fi
+          notes=(--generate-notes)
+          if [[ -f "docs/releases/$version.md" ]]; then notes=(--notes-file "docs/releases/$version.md"); fi
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --draft --title "Character Animation Export $version" "${notes[@]}" "${flags[@]}"
+          gh release edit "$GITHUB_REF_NAME" --draft=false

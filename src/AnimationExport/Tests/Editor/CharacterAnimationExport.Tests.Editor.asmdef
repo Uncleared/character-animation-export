@@ -1,0 +1,7 @@
+{
+  "name": "CharacterAnimationExport.Tests.Editor",
+  "references": ["CharacterAnimationExport.Editor"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

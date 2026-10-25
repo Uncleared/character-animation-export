@@ -1,0 +1,11 @@
+.animation-export { padding: 10px; }
+.row { flex-direction: row; margin-bottom: 6px; }
+.row > Button { margin-right: 5px; }
+.grow { flex-grow: 1; }
+.title { font-size: 18px; -unity-font-style: bold; margin-bottom: 8px; }
+.subtitle { font-size: 15px; -unity-font-style: bold; margin-bottom: 6px; }
+.clip-column { flex-grow: 2; flex-basis: 35%; min-width: 240px; margin-right: 10px; }
+.details { flex-grow: 3; flex-basis: 65%; }
+.details Label { white-space: normal; }
+.clip-preview { height: 220px; margin-top: 6px; margin-bottom: 6px; }
+Foldout { margin-bottom: 6px; }

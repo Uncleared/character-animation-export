@@ -1,0 +1,29 @@
+name: Bug report
+description: Report an export, import, event or clip-management problem.
+title: "[Bug] "
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Tool release, Blender version, Unity version and operating system.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Explain the rig/source mode, selected clips and action that fails. Say whether the generated example reproduces it.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant error or report
+      render: text

@@ -1,0 +1,11 @@
+/dist/
+__pycache__/
+*.py[cod]
+*.blend1
+*.blend2
+.DS_Store
+Thumbs.db
+.animation-export-recovery/
+/src/prototype-test-output/
+src/AnimationExport/Tests/Generated/
+src/AnimationExport/Blender~/dist/

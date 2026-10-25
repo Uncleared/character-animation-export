@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "profileId": "a207ad99fa3a46b1ad8739e13cddfb4b",
+  "characterName": "Robot_B",
+  "publicationId": "d603bf8b416b491fb83a18d9ce891390",
+  "generation": 2,
+  "blenderVersion": "5.2.1 LTS",
+  "fps": 30.0,
+  "clips": [
+    {
+      "id": "1430e3a74d1949adbbbc97f3007bbeef",
+      "name": "Idle A",
+      "state": "present",
+      "enabled": true,
+      "exported": true,
+      "file": "clips/1430e3a74d1949adbbbc97f3007bbeef.fbx",
+      "sha256": "510856d8ae0a5e24f1781596d00fcdafcc06db51397ac0e569928d7755328459",
+      "takeName": "Scene",
+      "startFrame": 1.0,
+      "endFrame": 12.0,
+      "fps": 30.0,
+      "duration": 0.36666666666666664,
+      "objectPaths": [
+        "Robot_B/Portable Object/Nested Moving Lid",
+        "Robot_B/Portable Object",
+        "Robot_B"
+      ]
+    },
+    {
+      "id": "691b7e4d9ec84e2f9edfe3d242b5295a",
+      "name": "Use Item",
+      "state": "present",
+      "enabled": true,
+      "exported": true,
+      "file": "clips/691b7e4d9ec84e2f9edfe3d242b5295a.fbx",
+      "sha256": "4d5a175529acd0995aa7c07de41c7586406de136f41c0c510d6b195499705832",
+      "takeName": "Scene",
+      "startFrame": 21.0,
+      "endFrame": 32.0,
+      "fps": 30.0,
+      "duration": 0.36666666666666664,
+      "objectPaths": [
+        "Robot_B/Portable Object/Nested Moving Lid",
+        "Robot_B/Portable Object",
+        "Robot_B"
+      ]
+    }
+  ],
+  "warnings": []
+}

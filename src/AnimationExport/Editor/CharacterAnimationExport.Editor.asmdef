@@ -1,0 +1,7 @@
+{
+  "name": "CharacterAnimationExport.Editor",
+  "rootNamespace": "CharacterAnimationExport",
+  "references": [],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

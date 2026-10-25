@@ -1,0 +1,15 @@
+* text=auto
+*.py text eol=lf
+*.cs text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.meta text eol=lf
+*.asmdef text eol=lf
+*.uss text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+VERSION text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.blend binary
+*.fbx binary
