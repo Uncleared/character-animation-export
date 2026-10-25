@@ -30,6 +30,7 @@ class DistributionTests(unittest.TestCase):
         release = packaging.version()
         with zipfile.ZipFile(io.BytesIO(first[f"CharacterAnimationExport-{release}.zip"])) as archive:
             self.assertIsNone(archive.testzip())
+            self.assertTrue(all(item.create_system == 3 for item in archive.infolist()))
             self.assertEqual(set(archive.namelist()), {
                 "character_animation_export/__init__.py", "character_animation_export/core.py"})
             for name in archive.namelist():
