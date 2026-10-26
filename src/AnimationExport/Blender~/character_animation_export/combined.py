@@ -13,6 +13,15 @@ def take_name(clip_id):
     return 'CAE_' + clip_id
 
 
+def sampling_range(start, end):
+    span = end - start
+    step = span / math.ceil(span)
+    # Native arange excludes stop. nextafter alone can still round the
+    # quotient down to an integer and drop the final sample (e.g. .1 to .4).
+    # Pad only its sampling envelope; the published take keeps exact bounds.
+    return step, end + step * 1e-6
+
+
 def check_compatibility():
     supported = {(5, 0): (5, 14, 0), (5, 2): (5, 15, 0)}
     expected = supported.get(tuple(bpy.app.version[:2]))
@@ -102,11 +111,13 @@ def export_steps(context, settings, path, records, included, prepare, cancel=Non
             # Include the exact endpoint after NLA scaling, using at least one
             # sample per source frame instead of dropping a fractional last frame.
             span = record.end - record.start
-            sampling = prepared._replace(settings=prepared.settings._replace(bake_anim_step=span / math.ceil(span)))
-            animation = native.fbx_animations_do(sampling, reference, record.start, record.end,
+            step, sampling_end = sampling_range(record.start, record.end)
+            sampling = prepared._replace(settings=prepared.settings._replace(bake_anim_step=step))
+            animation = native.fbx_animations_do(sampling, reference, record.start, sampling_end,
                                                   True, force_keep=True)
             if animation is None:
                 raise ValueError('No animation could be baked for ' + record.export_name)
+            animation = (*animation[:4], 0.0, span)
             animations.append(animation)
             for element, (_unused, nodes) in animation[1].items():
                 animated.update((element, prop) for prop in nodes)

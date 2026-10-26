@@ -9,7 +9,9 @@
 - Guard active-action contamination, report overlapping tracks, and reject conflicting retired names before publication.
 - Preserve old outputs on layout/name changes and preserve published files on cancellation or Undo.
 - Share full-mask path data between takes to reduce import metadata growth.
-- Put combined export first in the short illustrated guide.
+- Include the last sample at fractional ranges that native sampling would otherwise omit.
+- Avoid format-only metadata rewrites and model imports for unchanged ordinary 0.2.3 separate outputs.
+- Put combined export first in the short illustrated guide, including safe folder relocation.
 
 ## 0.2.3
 

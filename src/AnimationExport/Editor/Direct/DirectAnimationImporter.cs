@@ -244,7 +244,7 @@ namespace CharacterAnimationExport.Direct
                 catch (Exception error)
                 {
                     if (!failed.TryGetValue(path, out var previous) || previous != error.Message)
-                    { Debug.LogError("Animation export â€” " + path + ": " + error.Message); failed[path] = error.Message; }
+                    { Debug.LogError("Animation export - " + path + ": " + error.Message); failed[path] = error.Message; }
                 }
             }
         }
@@ -376,7 +376,7 @@ namespace CharacterAnimationExport.Direct
             if (settings == null || settings.rig == CharacterRig.Unset ||
                 (settings.rig == CharacterRig.Humanoid && (settings.sourceAvatar == null || !settings.sourceAvatar.isValid || !settings.sourceAvatar.isHuman)))
             {
-                if (setupNotified.Add(source.SettingsPath)) Debug.LogWarning("Animation export â€” choose the rig and matching Avatar once for " + source.folder + " using Assets > Animation Import Settings.");
+                if (setupNotified.Add(source.SettingsPath)) Debug.LogWarning("Animation export - choose the rig and matching Avatar once for " + source.folder + " using Assets > Animation Import Settings.");
                 return false;
             }
             setupNotified.Remove(source.SettingsPath);
@@ -386,6 +386,8 @@ namespace CharacterAnimationExport.Direct
                 (!string.IsNullOrEmpty(state.outputId) && state.outputId != source.outputId))
                 throw new InvalidDataException("This FBX belongs to a different export identity.");
             var oldStates = state.clips ?? Array.Empty<ClipState>();
+            var legacySingle = source.profile.schemaVersion == 2 && !source.combined &&
+                oldStates.Length == 0 && !string.IsNullOrEmpty(state.clipId);
             if (oldStates.Length == 0 && !string.IsNullOrEmpty(state.clipId))
             {
                 if (source.clips.Length != 1 || source.clip.id != state.clipId) throw new InvalidDataException("This FBX belongs to a different clip identity.");
@@ -499,19 +501,29 @@ namespace CharacterAnimationExport.Direct
             importer.importAnimation = true; importer.optimizeGameObjects = false; importer.preserveHierarchy = true;
             importer.clipAnimations = nextDefinitions.ToArray();
             var requiresImport = before != EditorJsonUtility.ToJson(importer);
+            // A format-only userdata migration also schedules a native model
+            // import after refresh. Keep unchanged v2 separate files byte-for-byte
+            // until their inputs, settings or recovery state actually change.
+            var single = nextStates.Count == 1 ? nextStates[0] : null;
+            var keepLegacy = legacySingle && !requiresImport && single != null &&
+                state.profileId == source.profile.profileId && state.hash == source.clip.sha256 &&
+                state.fps == single.fps && state.duration == single.duration &&
+                state.preserveNativeMask == single.preserveNativeMask &&
+                (state.blockedSignature ?? "") == (single.blockedSignature ?? "") &&
+                (state.fullMaskPaths ?? Array.Empty<string>()).SequenceEqual(single.fullMaskPaths ?? Array.Empty<string>());
             state.profileId = source.profile.profileId; state.outputId = source.outputId; state.hash = source.clip.sha256;
             state.clips = nextStates.Concat(oldStates.Where(item=>item.retired&&!nextStates.Any(next=>next.clipId==item.clipId))).ToArray(); state.retiredNames = retired.ToArray();
             // Clear legacy fields after migration; per-take state is the single timing authority.
             state.clipId = null; state.blockedSignature = null; state.fullMaskPaths = null;
             state.fps = state.duration = 0; state.preserveNativeMask = false;
-            var userData = WriteState(importer.userData, state);
+            var userData = keepLegacy ? importer.userData : WriteState(importer.userData, state);
             if (importer.userData != userData)
             {
                 importer.userData = userData;
                 EditorUtility.SetDirty(importer);
                 if (!requiresImport) AssetDatabase.WriteImportSettingsIfDirty(path);
             }
-            foreach (var warning in warnings) Debug.LogWarning("Animation export â€” " + warning);
+            foreach (var warning in warnings) Debug.LogWarning("Animation export - " + warning);
             if (!requiresImport) { ForgetAttempts(path); return false; }
             var key = path + ":" + source.clip.sha256 + ":" + DirectAnimationMetadata.HashText(settingsKey);
             attempts.TryGetValue(key, out var count);

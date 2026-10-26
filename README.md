@@ -47,6 +47,7 @@ The optional **AnimationEventEditor-0.3.0.unitypackage** provides **Tools → An
 - **Layered tracks:** overlaps are baked as authored and reported; mute an alternate track if you do not want it included. Push Down or unlink an active rig action before NLA export.
 - **Props outside the rig:** choose their collection under **Settings → Objects and Props**.
 - **Handing files over:** copy the whole output folder. Its automatic support data stays beside the FBX; there is no JSON workflow to manage.
+- **Moving the export folder:** move the whole folder in Unity's Project window, then choose its new location in Blender. This preserves references and events. Choosing an empty folder in Blender creates new assets; existing game references keep using the old files.
 - **Cancel or export failure:** previous files and Unity metadata are preserved.
 
 [Verification and limits](docs/VALIDATION.md) · [Maintenance](docs/MAINTAINING.md) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/Uncleared/character-animation-export/issues/new/choose)

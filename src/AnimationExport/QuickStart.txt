@@ -19,6 +19,7 @@ Unchecking a combined clip asks before removing it. Survivors keep events/refere
 To swap a take: uncheck the alternate, then Settings > original clip's link button.
 Separate FBXs remain available; unchecked separate files stay in place.
 Keep the output folder together when handing it over. No manual JSON import.
+To relocate: move the whole folder in Unity, then choose its new location in Blender.
 
 EVENTS
 Use Unity's native FBX > Animations > Events.

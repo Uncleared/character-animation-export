@@ -20,6 +20,7 @@ For combined export and artist iteration, generate both fixture sets, then use a
 ```shell
 blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python "src/AnimationExport/Blender~/tests/TestCombinedExport.py" -- --output /path/to/CombinedFixtures
 blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python "src/AnimationExport/Blender~/tests/TestArtistIteration.py" -- --output /path/to/ArtistFixtures
+blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python "src/AnimationExport/Blender~/tests/TestFractionalExport.py" -- --output /path/to/FractionalChecks
 python tools/prepare_unity_validation.py /path/to/NewCombinedProject --mode combined --fixtures /path/to/CombinedFixtures/Fixtures --artist-fixtures /path/to/ArtistFixtures/Fixtures
 ```
 
@@ -38,7 +39,7 @@ python tools/prepare_unity_validation.py /path/to/NewValidationProject --fixture
 Unity -batchmode -nographics -projectPath /path/to/NewValidationProject -executeMethod DirectSmoke.Run -logFile /path/to/direct.log
 ```
 
-Wait for Unity to exit and inspect result.json; the process launching successfully is not a passing result. The 38-assertion semantic test is intended to run once per newly prepared project. In that project, run AutomaticDirectSmoke.Run in a second Unity session to test actual automatic callbacks; inspect automatic-result.json. These entry points exit Unity and require the helper's disposable-project marker.
+Wait for Unity to exit and inspect result.json; the process launching successfully is not a passing result. The 49-check semantic test is intended to run once per newly prepared project. In that project, run AutomaticDirectSmoke.Run in a second Unity session to test actual automatic callbacks; inspect automatic-result.json. These entry points exit Unity and require the helper's disposable-project marker.
 
 For event-only installation, prepare another new project:
 
