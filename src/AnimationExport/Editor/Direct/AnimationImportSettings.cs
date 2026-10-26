@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace CharacterAnimationExport.Direct
 {
-    public enum CharacterRig { Generic, Humanoid }
+    public enum CharacterRig { [InspectorName("Choose Rig")] Unset = -1, Generic = 0, Humanoid = 1 }
 
     [Serializable]
     public sealed class ClipImportOverride
@@ -25,7 +25,7 @@ namespace CharacterAnimationExport.Direct
     public sealed class AnimationImportSettings : ScriptableObject
     {
         [HideInInspector] public string profileId, characterName;
-        public CharacterRig rig;
+        public CharacterRig rig = CharacterRig.Unset;
         public Avatar sourceAvatar;
         public string motionNode;
         public bool bakeRotation = true, bakeY = true, bakeXZ = true, includeAllTransforms = true;

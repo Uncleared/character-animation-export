@@ -16,6 +16,8 @@ namespace CharacterAnimationExport.Direct
         sealed class AppliedState
         {
             public string profileId, clipId, hash, blockedSignature;
+            public string[] fullMaskPaths;
+            public bool preserveNativeMask;
             public float fps, duration;
         }
 
@@ -24,6 +26,7 @@ namespace CharacterAnimationExport.Direct
         static readonly HashSet<string> pending = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<string, string> failed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<string, int> attempts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        static readonly HashSet<string> setupNotified = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static bool scheduled;
         public static int ReconcileCount { get; private set; }
 
@@ -35,10 +38,13 @@ namespace CharacterAnimationExport.Direct
             var human = settings != null && settings.rig == CharacterRig.Humanoid;
             if (human && (settings.sourceAvatar == null || !settings.sourceAvatar.isValid || !settings.sourceAvatar.isHuman))
                 throw new InvalidOperationException("Choose the matching Humanoid Avatar in this character's Animation Import Settings.");
-            importer.animationType = human ? ModelImporterAnimationType.Human : ModelImporterAnimationType.Generic;
-            importer.avatarSetup = human ? ModelImporterAvatarSetup.CopyFromOther : ModelImporterAvatarSetup.CreateFromThisModel;
-            importer.sourceAvatar = human ? settings.sourceAvatar : null;
-            if (settings != null && !string.IsNullOrWhiteSpace(settings.motionNode)) importer.motionNodeName = settings.motionNode;
+            var rig = human ? ModelImporterAnimationType.Human : ModelImporterAnimationType.Generic;
+            var setup = human ? ModelImporterAvatarSetup.CopyFromOther : ModelImporterAvatarSetup.CreateFromThisModel;
+            var avatar = human ? settings.sourceAvatar : null;
+            if (importer.animationType != rig) importer.animationType = rig;
+            if (importer.avatarSetup != setup) importer.avatarSetup = setup;
+            if (importer.sourceAvatar != avatar) importer.sourceAvatar = avatar;
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.motionNode) && importer.motionNodeName != settings.motionNode) importer.motionNodeName = settings.motionNode;
         }
 
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom, bool didDomainReload)
@@ -159,6 +165,13 @@ namespace CharacterAnimationExport.Direct
             if (definitions.Length > 1) throw new InvalidOperationException("This FBX has custom multiple clips. Keep those settings or export to another filename.");
             var definition = definitions.Length == 1 ? definitions[0] : defaults[0];
             var settings = source.Settings;
+            if (settings == null || settings.rig == CharacterRig.Unset ||
+                (settings.rig == CharacterRig.Humanoid && (settings.sourceAvatar == null || !settings.sourceAvatar.isValid || !settings.sourceAvatar.isHuman)))
+            {
+                if (setupNotified.Add(source.SettingsPath)) Debug.LogWarning("Animation export — choose the rig and matching Avatar once for " + source.folder + " using Assets > Animation Import Settings.");
+                return false;
+            }
+            setupNotified.Remove(source.SettingsPath);
             if (settings != null && EditorUtility.IsDirty(settings)) AssetDatabase.SaveAssetIfDirty(settings);
             var state = ReadState(importer.userData);
             if (!string.IsNullOrEmpty(state.clipId) && (state.clipId != source.clip.id || state.profileId != source.profile.profileId))
@@ -175,7 +188,7 @@ namespace CharacterAnimationExport.Direct
                 eventKey.Append('|').Append(item.time.ToString("R", CultureInfo.InvariantCulture)).Append(':').Append(item.functionName).Append(':')
                     .Append(item.stringParameter).Append(':').Append(item.floatParameter.ToString("R", CultureInfo.InvariantCulture)).Append(':').Append(item.intParameter).Append(':').Append(objectKey).Append(':').Append((int)item.messageOptions);
             }
-            var settingsKey = settings == null ? "defaults" : JsonUtility.ToJson(settings);
+            var settingsKey = EditorJsonUtility.ToJson(settings);
             var signature = source.clip.sha256 + ":" + DirectAnimationMetadata.HashText(eventKey + settingsKey);
             var oldDuration = state.fps > 0 ? (definition.lastFrame - definition.firstFrame) / state.fps : duration;
             var events = (definition.events ?? Array.Empty<AnimationEvent>()).Select(item => CloneEvent(item)).ToArray();
@@ -232,17 +245,33 @@ namespace CharacterAnimationExport.Direct
                 var mask = new AvatarMask();
                 try
                 {
-                    var transforms = model.GetComponentsInChildren<Transform>(true);
-                    mask.transformCount = transforms.Length;
-                    for (var index = 0; index < transforms.Length; index++)
+                    definition.ConfigureMaskFromClip(ref mask);
+                    var known = state.fullMaskPaths == null ? null : new HashSet<string>(state.fullMaskPaths, StringComparer.Ordinal);
+                    var edited = state.preserveNativeMask;
+                    if (definitions.Length > 0)
                     {
-                        mask.SetTransformPath(index, AnimationUtility.CalculateTransformPath(transforms[index], model.transform));
-                        mask.SetTransformActive(index, true);
+                        for (var part = 0; part < (int)AvatarMaskBodyPart.LastBodyPart; part++)
+                            edited |= !mask.GetHumanoidBodyPartActive((AvatarMaskBodyPart)part);
+                        for (var index = 0; index < mask.transformCount; index++)
+                            if ((known == null || known.Contains(mask.GetTransformPath(index))) && !mask.GetTransformActive(index)) edited = true;
                     }
-                    for (var part = 0; part < (int)AvatarMaskBodyPart.LastBodyPart; part++) mask.SetHumanoidBodyPartActive((AvatarMaskBodyPart)part, true);
-                    definition.maskType = ClipAnimationMaskType.CreateFromThisModel;
-                    definition.maskSource = null;
-                    definition.ConfigureClipFromMask(mask);
+                    if (edited) state.preserveNativeMask = true;
+                    else
+                    {
+                        var transforms = model.GetComponentsInChildren<Transform>(true);
+                        mask.transformCount = transforms.Length;
+                        for (var index = 0; index < transforms.Length; index++)
+                        {
+                            mask.SetTransformPath(index, AnimationUtility.CalculateTransformPath(transforms[index], model.transform));
+                            mask.SetTransformActive(index, true);
+                        }
+                        for (var part = 0; part < (int)AvatarMaskBodyPart.LastBodyPart; part++) mask.SetHumanoidBodyPartActive((AvatarMaskBodyPart)part, true);
+                        definition.maskType = ClipAnimationMaskType.CreateFromThisModel;
+                        definition.maskSource = null;
+                        definition.ConfigureClipFromMask(mask);
+                        state.fullMaskPaths = Enumerable.Range(0, mask.transformCount).Select(mask.GetTransformPath).ToArray();
+                        state.preserveNativeMask = false;
+                    }
                 }
                 finally { Object.DestroyImmediate(mask); }
             }

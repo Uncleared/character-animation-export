@@ -24,6 +24,9 @@ public static class AutomaticDirectSmoke
             if(AssetDatabase.IsValidFolder(Root))AssetDatabase.DeleteAsset(Root);
             Copy("Base");
             var source=DirectAnimationMetadata.Sources(Root).First();path=source.assetPath;
+            var settings=ScriptableObject.CreateInstance<AnimationImportSettings>();settings.profileId=source.profile.profileId;settings.characterName=source.profile.characterName;
+            settings.rig=CharacterRig.Generic;
+            AssetDatabase.CreateAsset(settings,source.SettingsPath);AssetDatabase.SaveAssetIfDirty(settings);
             deadline=DateTime.UtcNow.AddSeconds(60);EditorApplication.update+=Tick;
         }
         catch(Exception error){Finish(error);}

@@ -6,13 +6,13 @@ Export Blender character animations and their props straight into Unity. NLA str
 
 ## Download and install
 
-Get **CharacterAnimationExport-Prototype-0.2.2.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
+Get **CharacterAnimationExport-Prototype-0.2.3.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
 
 | Installer inside the bundle | Install in |
 | --- | --- |
-| CharacterAnimationExport-0.2.2.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
-| CharacterAnimationExport-Unity-0.2.2.unitypackage | Unity: Assets → Import Package → Custom Package. |
-| AnimationEventEditor-0.2.2.unitypackage | Optional independent Unity event editor. |
+| CharacterAnimationExport-0.2.3.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
+| CharacterAnimationExport-Unity-0.2.3.unitypackage | Unity: Assets → Import Package → Custom Package. |
+| AnimationEventEditor-0.2.3.unitypackage | Optional independent Unity event editor. |
 
 ## Animator: everyday use
 

@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 2),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 3),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 
@@ -205,12 +205,12 @@ def export_package_steps(context, settings, cancel=None, direct=False):
     source_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
     if direct and settings.source_file and source_file != settings.source_file:
         raise ValueError('This is a renamed or copied .blend. In Settings, choose Keep Existing Outputs or New Character Export once.')
+    pending_ids = {}
     if direct:
         for record in checked:
             if record.published_name and record.export_name != record.published_name:
-                record.clip_id = core.new_id()
-                record.published_name = ''
-        core.validate_direct_targets(root, settings.profile_id, [(r.clip_id, r.export_name) for r in checked])
+                pending_ids[record.clip_id] = core.new_id()
+        core.validate_direct_targets(root, settings.profile_id, [(pending_ids.get(r.clip_id, r.clip_id), r.export_name) for r in checked])
     if any(r.enabled and not r.retired and r.state == 'AMBIGUOUS' for r in settings.clips):
         raise ValueError('Relink ambiguous clip sources before exporting.')
     rig = settings.rig
@@ -298,7 +298,8 @@ def export_package_steps(context, settings, cancel=None, direct=False):
                     use_space_transform=True, bake_space_transform=False, add_leaf_bones=settings.leaf_bones,
                     use_armature_deform_only=False, axis_forward='-Z', axis_up='Y', path_mode='AUTO', embed_textures=False)
                 take = _take_name(path)
-                old_records[record.clip_id] = dict(id=record.clip_id, name=record.export_name, state='present', enabled=True,
+                clip_id = pending_ids.get(record.clip_id, record.clip_id)
+                old_records[clip_id] = dict(id=clip_id, name=record.export_name, state='present', enabled=True,
                     exported=True, file=relative, sha256=core.digest(path), takeName=take, startFrame=record.start,
                     endFrame=record.end, fps=fps, duration=(record.end - record.start) / fps,
                     objectPaths=[_path(o) for o in included])
@@ -306,8 +307,9 @@ def export_package_steps(context, settings, cancel=None, direct=False):
                 context.window_manager.progress_update(index + 1)
                 yield record.export_name
             for record in settings.clips:
-                item = dict(old_records.get(record.clip_id, {}))
-                item.update(id=record.clip_id, name=record.export_name, enabled=record.enabled,
+                clip_id = pending_ids.get(record.clip_id, record.clip_id)
+                item = dict(old_records.get(clip_id, {}))
+                item.update(id=clip_id, name=record.export_name, enabled=record.enabled,
                             state='removed' if record.retired or record.state != 'READY' else 'present',
                             exported=record in checked)
                 manifest['clips'].append(item)
@@ -318,6 +320,7 @@ def export_package_steps(context, settings, cancel=None, direct=False):
                         manifest['clips'].append(dict(row, state='removed', exported=False))
                 core.publish_direct(root, manifest, staged)
                 for record in checked:
+                    record.clip_id = pending_ids.get(record.clip_id, record.clip_id)
                     record.published_name = record.export_name
                 settings.source_file = source_file
             else:
@@ -424,6 +427,7 @@ class CAE_OT_export(bpy.types.Operator):
     bl_idname = 'cae.export_checked'
     bl_label = 'Export'
     def execute(self, context):
+        global _busy
         profile = settings_for(context.scene)
         if profile is None:
             self.report({'ERROR'}, 'Choose the character rig.')
@@ -432,10 +436,17 @@ class CAE_OT_export(bpy.types.Operator):
             self.report({'INFO'}, 'An export is already running.')
             return {'CANCELLED'}
         if not bpy.app.background:
-            profile = settings_for(context.scene)
-            self.steps = export_package_steps(context, profile, direct=profile is not None and profile.delivery == 'DIRECT')
-            self.timer = context.window_manager.event_timer_add(0.1, window=context.window)
-            context.window_manager.modal_handler_add(self)
+            _busy = True
+            self.timer = None
+            try:
+                self.steps = export_package_steps(context, profile, direct=profile.delivery == 'DIRECT')
+                self.timer = context.window_manager.event_timer_add(0.1, window=context.window)
+                context.window_manager.modal_handler_add(self)
+            except Exception:
+                if self.timer is not None:
+                    context.window_manager.event_timer_remove(self.timer)
+                _busy = False
+                raise
             return {'RUNNING_MODAL'}
         try:
             profile = settings_for(context.scene)
@@ -448,25 +459,29 @@ class CAE_OT_export(bpy.types.Operator):
             return {'CANCELLED'}
 
     def modal(self, context, event):
+        global _busy
         if event.type == 'ESC':
             self.steps.close()
+            _busy = False
             context.window_manager.event_timer_remove(self.timer)
             self.report({'INFO'}, 'Cancelled. Previous package preserved.')
             profile = settings_for(context.scene)
             if profile:
                 profile.last_report = 'Cancelled. Previous package preserved.'
             return {'CANCELLED'}
-        if event.type == 'TIMER' and event.timer == self.timer:
+        if event.type == 'TIMER':
             try:
                 next(self.steps)
                 for area in context.screen.areas:
                     area.tag_redraw()
             except StopIteration:
+                _busy = False
                 context.window_manager.event_timer_remove(self.timer)
                 self.report({'INFO'}, settings_for(context.scene).last_report)
                 return {'FINISHED'}
             except Exception as exc:
                 self.steps.close()
+                _busy = False
                 context.window_manager.event_timer_remove(self.timer)
                 settings_for(context.scene).last_report = str(exc)
                 self.report({'ERROR'}, str(exc))

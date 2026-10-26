@@ -49,9 +49,23 @@ public static class DirectSmoke
         try
         {
             Folder(Root);
+            if(AssetDatabase.IsValidFolder(Root))AssetDatabase.DeleteAsset(Root);
+            Folder(Root);
             Copy("Base");
             var rows=DirectAnimationMetadata.Sources(Root).ToArray();
             Check(rows.Length==2,"two direct FBXs imported without a library/window");
+            var unset=rows.First();var untouched=File.ReadAllBytes(unset.assetPath+".meta");
+            Check(unset.Settings==null,"new folder waits for explicit rig setup");
+            Check(!DirectAnimationImporter.Reconcile(unset.assetPath)&&untouched.SequenceEqual(File.ReadAllBytes(unset.assetPath+".meta")),"unconfigured folder does not mutate or reimport a model");
+            var folderSetup=ScriptableObject.CreateInstance<AnimationImportSettings>();folderSetup.profileId=unset.profile.profileId;folderSetup.characterName=unset.profile.characterName;
+            AssetDatabase.CreateAsset(folderSetup,unset.SettingsPath);AssetDatabase.SaveAssetIfDirty(folderSetup);
+            Check(folderSetup.rig==CharacterRig.Unset&&(int)CharacterRig.Generic==0&&(int)CharacterRig.Humanoid==1,"new rig setup is unset; existing enum values remain stable");
+            Check(!DirectAnimationImporter.Reconcile(unset.assetPath)&&untouched.SequenceEqual(File.ReadAllBytes(unset.assetPath+".meta")),"existing unset settings do not mutate a model");
+            folderSetup.rig=CharacterRig.Humanoid;
+            Check(!DirectAnimationImporter.Reconcile(unset.assetPath)&&untouched.SequenceEqual(File.ReadAllBytes(unset.assetPath+".meta")),"Humanoid setup waits for a valid Avatar without mutating a model");
+            folderSetup.rig=CharacterRig.Generic;EditorUtility.SetDirty(folderSetup);AssetDatabase.SaveAssetIfDirty(folderSetup);
+            DirectAnimationImporter.QueueFolder(Root);DirectAnimationImporter.ProcessPending();
+            foreach(var row in rows)DirectAnimationImporter.Reconcile(row.assetPath);
             var source=rows.First();var path=source.assetPath;var clip=Clip(path);
             Check(clip.name==source.clip.name,"friendly clip name");
             Check(Math.Abs(clip.length-source.clip.duration)<0.001f,"source strip duration");
@@ -96,8 +110,7 @@ public static class DirectSmoke
             Check(Directory.GetFiles(Path.Combine(Project,".animation-export-recovery/DirectEvents"),"*.meta.backup",SearchOption.AllDirectories).Length>0,"out-of-range recovery metadata retained outside Assets");
             Check(!DirectAnimationImporter.Reconcile(path),"blocked range converges without repeated warning/import");
             Copy("NewChild");
-            var settings=ScriptableObject.CreateInstance<AnimationImportSettings>();settings.profileId=source.profile.profileId;settings.characterName=source.profile.characterName;settings.bakeXZ=false;
-            AssetDatabase.CreateAsset(settings,source.SettingsPath);AssetDatabase.SaveAssetIfDirty(settings);
+            var settings=AssetDatabase.LoadAssetAtPath<AnimationImportSettings>(source.SettingsPath);settings.bakeXZ=false;
             DirectAnimationImporter.Reconcile(path);importer=(ModelImporter)AssetImporter.GetAtPath(path);
             Check(!importer.clipAnimations.Single().lockRootPositionXZ,"folder defaults opt-out applied");
             settings.originalOrientation=false;settings.originalPositionXZ=false;
@@ -107,6 +120,14 @@ public static class DirectSmoke
             DirectAnimationImporter.Reconcile(path);definition=((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single();
             Check(definition.keepOriginalOrientation&&definition.keepOriginalPositionXZ,"per-clip authored root-basis override applied");
             Check(!DirectAnimationImporter.Reconcile(path),"root-basis override converges without repeat import");
+            importer=(ModelImporter)AssetImporter.GetAtPath(path);definition=importer.clipAnimations.Single();var editedMask=new AvatarMask();
+            definition.ConfigureMaskFromClip(ref editedMask);
+            var disabled=Enumerable.Range(0,editedMask.transformCount).First(i=>editedMask.GetTransformPath(i).Contains("Nested Moving Lid"));var disabledPath=editedMask.GetTransformPath(disabled);editedMask.SetTransformActive(disabled,false);
+            definition.maskType=ClipAnimationMaskType.CreateFromThisModel;definition.ConfigureClipFromMask(editedMask);Object.DestroyImmediate(editedMask);
+            importer.clipAnimations=new[]{definition};importer.SaveAndReimport();DirectAnimationImporter.Reconcile(path);
+            var retainedMask=new AvatarMask();((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single().ConfigureMaskFromClip(ref retainedMask);
+            Check(Enumerable.Range(0,retainedMask.transformCount).Any(i=>retainedMask.GetTransformPath(i)==disabledPath&&!retainedMask.GetTransformActive(i)),"native Create From This Model transform opt-out retained");Object.DestroyImmediate(retainedMask);
+            Check(!DirectAnimationImporter.Reconcile(path),"native mask edit converges without repeated import");
             var custom=new AvatarMask();custom.transformCount=1;custom.SetTransformPath(0,"");custom.SetTransformActive(0,true);AssetDatabase.CreateAsset(custom,Root+"/Custom.mask");
             definition=importer.clipAnimations.Single();definition.maskType=ClipAnimationMaskType.CopyFromOther;definition.maskSource=custom;definition.ConfigureClipFromMask(custom);importer.clipAnimations=new[]{definition};importer.SaveAndReimport();
             DirectAnimationImporter.Reconcile(path);Check(((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single().maskSource==custom,"native custom mask retained");

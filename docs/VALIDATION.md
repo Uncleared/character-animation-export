@@ -1,6 +1,6 @@
-# Verification for 0.2.2
+# Verification for 0.2.3
 
-The authored-facing fix passed 42 direct Unity semantics checks, including default root basis, opt-outs, per-clip overrides, native event preservation and convergence. A representative nine-clip Humanoid comparison removed facing offsets of approximately 20–24 degrees: sampled Smoking yaw differs by at most 0.041 degrees from the original and the largest sampled difference across nine clips is 0.280 degrees. Full action clips and short idle samples in the game again confirmed spawned prop animation and event effects. These are desktop Editor results; final visual acceptance remains with the animator.
+The earlier 0.2.2 authored-facing fix passed 42 direct Unity semantics checks, including default root basis, opt-outs, per-clip overrides, native event preservation and convergence. A representative nine-clip Humanoid comparison removed facing offsets of approximately 20–24 degrees: sampled Smoking yaw differs by at most 0.041 degrees from the original and the largest sampled difference across nine clips is 0.280 degrees. Full action clips and short idle samples in the game again confirmed spawned prop animation and event effects. These are desktop Editor results; final visual acceptance remains with the animator.
 
 The folder-picker change and direct-export regression passed 24 checks on each of Blender 5.0.1 and 5.2.1 LTS, including saved relative paths and stable export identities.
 
@@ -35,4 +35,10 @@ Material animation, arbitrary Blender-only behavior/simulations, fractional stri
 
 The 0.1 legacy workflow previously passed 14 native Unity tests and 49 Blender checks on both Blender versions; see the legacy guide. Its native-clip size and full-project reference-scan cost still apply to that workflow.
 
-GitHub CI checks distribution and pure Python logic. It does not run Blender or Unity. This version is a prototype prerelease awaiting the animator's functional check and the final independent implementation review and human acceptance.
+GitHub CI checks distribution and pure Python logic. It does not run Blender or Unity. The Smoking facing retest was accepted by the user. Two implementation reviews ran with Claude Opus5.5. Final setup/modal/convergence fixes were applied and tested after the second review; they were not re-reviewed. Final human acceptance remains pending.
+
+Maintenance review validation: native custom Create From This Model masks, unconfigured-folder non-mutation, delayed setup convergence, and blocked-event restart stability are covered by focused native checks. Blender failed/cancelled-rename rollback tests pass on both tested versions. Combined/lightweight geometry experiments are separate from this released workflow.
+
+0.2.3 final checks:49 native Unity assertions; configured Humanoid input preserved while setup is unset or its Avatar is missing; unchanged Humanoid settings converge without another import.30 direct-export checks pass on Blender5.0.1 and5.2.1LTS, including failed rename and pre-bake cancellation. Real GUI button exports and immediate second-click rejection pass on both Blender versions. Blocked-event recovery with a persisted clip reference remains unchanged across two Editor sessions. Automatic first import/new-prop callbacks preserve references and converge.
+
+Export names are ownership keys. Returning to a filename retained by an older published clip identity is blocked rather than reclaiming it automatically. Same-basename copies retain profile identity; a new character should use a distinct saved source/export profile. Sidecar/hash mismatches are ignored until matching source and metadata arrive; manually replacing an owned FBX is outside normal export. Native event seconds do not automatically follow a retimed gesture.

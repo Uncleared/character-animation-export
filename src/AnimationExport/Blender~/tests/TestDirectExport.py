@@ -93,9 +93,41 @@ try:
 except InterruptedError: pass
 check(hashes()==before_hashes,'cancellation preserves every published file')
 check(not addon._busy,'cancellation releases busy state')
+from types import SimpleNamespace
+original_bpy=addon.bpy
+timers=[]
+wm=SimpleNamespace(event_timer_add=lambda *a,**kw: timers.append(object()) or timers[-1],modal_handler_add=lambda _op: None,event_timer_remove=lambda timer: timers.remove(timer))
+operator_context=SimpleNamespace(scene=scene,window_manager=wm,window=None)
+first_operator=SimpleNamespace(report=lambda *_:None)
+second_operator=SimpleNamespace(report=lambda *_:None)
+try:
+    addon.bpy=SimpleNamespace(app=SimpleNamespace(background=False))
+    started=addon.CAE_OT_export.execute(first_operator,operator_context)
+    check(started=={'RUNNING_MODAL'} and addon._busy,'modal export reserves busy state before the first bake')
+    check(addon.CAE_OT_export.execute(second_operator,operator_context)=={'CANCELLED'} and len(timers)==1,'second export cannot start before the first timer tick')
+    check(addon.CAE_OT_export.modal(first_operator,operator_context,SimpleNamespace(type='ESC'))=={'CANCELLED'} and not addon._busy and not timers,'cancel before first bake releases operator and timer')
+finally:
+    addon.bpy=original_bpy
+    addon._busy=False
 
 foreign=root/'Foreign.fbx'
 foreign.write_bytes(b'not owned by this exporter')
+saved_name,saved_id,saved_published=first.export_name,first.clip_id,first.published_name
+first.export_name='Foreign'
+try:
+    addon.export_direct(bpy.context,profile)
+    raise AssertionError('colliding rename accepted')
+except ValueError: pass
+check((first.clip_id,first.published_name)==(saved_id,saved_published),'failed rename retains published identity')
+first.export_name='CancelledRename'
+try:
+    addon.export_direct(bpy.context,profile,cancel=lambda _index: True)
+    raise AssertionError('cancelled rename accepted')
+except InterruptedError: pass
+check((first.clip_id,first.published_name)==(saved_id,saved_published),'cancelled rename retains published identity')
+first.export_name=saved_name
+addon.export_direct(bpy.context,profile)
+check(first.clip_id==saved_id and first.published_name==saved_published,'original filename remains usable after failed rename')
 try:
     core.validate_direct_targets(root,profile.profile_id,[(first.clip_id,'Foreign')])
     raise AssertionError('foreign overwrite allowed')

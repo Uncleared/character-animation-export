@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3
+
+- Gate new rig setup until an explicit choice and valid Humanoid Avatar; preserve existing enum values.
+- Prevent interleaved double-click exports and use supported Blender modal timer events.
+- Avoid reassigning an unchanged Avatar, which resets native Humanoid scale and causes unnecessary reimports.
+
+- Preserve native Create From This Model mask edits while still including new props in managed masks.
+- Keep blocked-event recovery stable across Editor restarts.
+- Wait for one-time folder rig setup without mutating every unconfigured FBX.
+- Preserve clip identities when a renamed export fails or is cancelled.
+
+
 ## 0.2.2 — Authored facing and illustrated guide
 
 - Preserve original root orientation and horizontal origin by default instead of deriving a separate body-facing reference per clip.
