@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — Preview navigation
+
+- Add persistent pan/orbit/zoom, current-pose framing and view reset.
+- Add a resizable preview, frame stepping/seeking, playback speed and loop controls.
+- Evaluate Humanoid preview through an isolated Animator graph and matching Avatar; prevent event firing and dispose the graph on close.
+- Keep the optional event editor independent of exporter metadata and clarify folder handoff.
+
 ## 0.2.0 — 2026-10-26
 
 - Replace everyday package/library steps with direct named FBX export into the chosen folder, including Assets.

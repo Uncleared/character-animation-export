@@ -42,7 +42,11 @@ def prepare(destination, fixtures=None, mode="direct", unity_version="6000.1.7f1
         scripts = ("DirectSmoke.cs", "AutomaticDirectSmoke.cs")
     else:
         shutil.copytree(source / "Events", target / "Events")
-        scripts = ("StandaloneEventSmoke.cs",)
+        if mode == "preview":
+            shutil.copyfile(REPO / "tools/validation/EventPreviewSmoke.cs", target / "Events/EventPreviewSmoke.cs")
+            scripts = ()
+        else:
+            scripts = ("StandaloneEventSmoke.cs",)
     editor = destination / "Assets/Editor"
     editor.mkdir(parents=True, exist_ok=True)
     for name in scripts:
@@ -54,7 +58,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("destination", type=Path)
     parser.add_argument("--fixtures", type=Path)
-    parser.add_argument("--mode", choices=("direct", "events"), default="direct")
+    parser.add_argument("--mode", choices=("direct", "events", "preview"), default="direct")
     parser.add_argument("--unity-version", default="6000.1.7f1")
     args = parser.parse_args()
     print(prepare(args.destination, args.fixtures, args.mode, args.unity_version))

@@ -37,7 +37,9 @@ python tools/prepare_unity_validation.py /path/to/NewEventValidation --mode even
 Unity -batchmode -nographics -projectPath /path/to/NewEventValidation -executeMethod StandaloneEventSmoke.Run -logFile /path/to/events.log
 ```
 
-Inspect result.json. Also trial the built installers in a fresh project before release; source installation alone does not prove installer completeness.
+Inspect result.json. For the rendered navigation regression, prepare a separate new project with --mode preview, then run CharacterAnimationEvents.EventPreviewSmoke.Run **without -nographics**. Inspect preview-result.json and the before/pan/orbit-zoom PNGs. These are actual UI-event and GPU checks; do not run them against a production game project.
+
+Also trial the built installers in a fresh project before release; source installation alone does not prove installer completeness.
 
 Run the retained Blender legacy regression with TestBlenderPrototype.py in the same tests folder. For native legacy tests, put the full src/AnimationExport under a disposable Unity project's Assets, including Blender~ and Tests. With Unity Test Framework installed, run CharacterAnimationExport.Tests.AnimationExportTests in EditMode.
 

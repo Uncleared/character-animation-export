@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 0),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 1),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 

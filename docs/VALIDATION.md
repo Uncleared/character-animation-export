@@ -1,4 +1,10 @@
-# Verification for 0.2.0
+# Verification for 0.2.1
+
+The preview-navigation revision passed 61 checks in Unity 6000.1.7f1 with real UI mouse events and rendered preview images. Checks cover native-style gestures, capture release outside the preview, stable camera state while scrubbing, framing at three model scales/aspect ratios, frame seeking/stepping, nonlooping playback, and unchanged event/source data. The optional editor is installed without exporter/importer assemblies.
+
+A separate event-only project compared a representative Humanoid preview against an initialized Animator graph: all 51 mapped bones and sampled prop transforms matched, preview event firing was disabled, source events were unchanged, and the graph was cleaned up. The Humanoid Animator is explicitly initialized before sampling so the pose is also correct across later UI frames.
+
+The following export checks remain from 0.2.0; the exporter behavior is unchanged in 0.2.1.
 
 Checked on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1. The new direct workflow was exercised in disposable Unity projects before installation in the larger game project.
 

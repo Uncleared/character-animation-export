@@ -1,6 +1,16 @@
 .event-editor { padding: 8px; }
 .button-row { flex-direction: row; margin-bottom: 6px; }
 .button-row > Button { flex-grow: 1; }
-.clip-preview { min-height: 175px; margin-top: 6px; }
+.preview-toolbar { flex-direction: row; flex-shrink: 0; margin-top: 6px; }
+.preview-caption { flex-grow: 1; -unity-text-align: middle-left; }
+.preview-split { flex-grow: 1; min-height: 420px; }
+.clip-preview { min-height: 150px; flex-grow: 1; }
+.event-details { min-height: 230px; padding-top: 6px; }
+.playback-row { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: 4px; }
+.playback-row > Button { min-width: 28px; }
+.playback-row > PopupField { min-width: 66px; }
+.playback-row > Toggle { margin-left: 4px; margin-right: 4px; }
+.frame-field { flex-grow: 1; min-width: 100px; }
+.frame-field > .unity-base-field__label { min-width: 40px; }
 .event-list { flex-grow: 1; margin-top: 8px; margin-bottom: 8px; }
 .event-list Foldout { margin-bottom: 4px; }

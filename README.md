@@ -6,13 +6,13 @@ Export Blender character animations and their props straight into Unity. NLA str
 
 ## Download and install
 
-Get **CharacterAnimationExport-Prototype-0.2.0.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
+Get **CharacterAnimationExport-Prototype-0.2.1.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
 
 | Installer inside the bundle | Install in |
 | --- | --- |
-| CharacterAnimationExport-0.2.0.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
-| CharacterAnimationExport-Unity-0.2.0.unitypackage | Unity: Assets → Import Package → Custom Package. |
-| AnimationEventEditor-0.2.0.unitypackage | Optional independent Unity event editor. |
+| CharacterAnimationExport-0.2.1.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
+| CharacterAnimationExport-Unity-0.2.1.unitypackage | Unity: Assets → Import Package → Custom Package. |
+| AnimationEventEditor-0.2.1.unitypackage | Optional independent Unity event editor. |
 
 ## Animator: everyday use
 
@@ -22,7 +22,7 @@ Get **CharacterAnimationExport-Prototype-0.2.0.zip** from [Releases](https://git
 
 Save the blend to remember the folder and clip choices. Repeat Export whenever motion changes. New/resized strips supply their own ranges. If several rigs exist, choose the character once under Settings.
 
-You get ordinary ClipName.fbx files. Keep the automatically maintained AnimationExportData folder beside them; you never need to open or import its JSON files.
+You get ordinary ClipName.fbx files. AnimationExportData is maintained automatically; you never need to open or import its JSON files. When handing exports to another developer, copy the whole output folder.
 
 ## Unity: once per character
 
@@ -36,7 +36,9 @@ Use the FBX clips directly in your existing Animator or animation system. Export
 
 Use Unity's native **FBX Import Settings → Animations → Events**. Saved event seconds and payloads are preserved on motion updates. If a shortened clip excludes an event, the tool warns and retains the old event data/import bounds for correction, with recovery outside Assets.
 
-Or install the optional event package and open **Tools → Animation Event Editor**. It edits .anim and FBX clips **without the exporter/importer installed**. Save/Discard are explicit; an outdated draft cannot overwrite newer native edits.
+Or install the optional event package and open **Tools → Animation Event Editor**. It edits .anim and FBX clips **without the exporter/importer installed**. Save/Discard are explicit; an outdated draft cannot overwrite newer native edits. No export metadata or JSON file is needed.
+
+The preview uses Unity-style navigation: **left/middle drag pans**, **right drag or Alt-left drag orbits**, and **scroll or Alt-right drag zooms**. **F** frames the current pose; **Home** resets the view. Drag the divider for more space. Frame stepping, a frame-number field, speed and looping help place cues precisely. Humanoid preview uses Animator evaluation; previewing does not fire animation events.
 
 <details>
 <summary>Props, NLA and advanced options</summary>
