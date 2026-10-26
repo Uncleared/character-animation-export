@@ -15,6 +15,16 @@ dist contains the Blender add-on, Unity importer/legacy package, independent opt
 
 ## Native checks
 
+For combined export and artist iteration, generate both fixture sets, then use a new disposable project:
+
+```shell
+blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python "src/AnimationExport/Blender~/tests/TestCombinedExport.py" -- --output /path/to/CombinedFixtures
+blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python "src/AnimationExport/Blender~/tests/TestArtistIteration.py" -- --output /path/to/ArtistFixtures
+python tools/prepare_unity_validation.py /path/to/NewCombinedProject --mode combined --fixtures /path/to/CombinedFixtures/Fixtures --artist-fixtures /path/to/ArtistFixtures/Fixtures
+```
+
+Run `CombinedSmoke.Run`, then `ArtistIterationSmoke.Run`, then `ArtistIterationSmoke.CompleteRestart` in three separate Unity sessions. Inspect `result.json` and save the first `artist-result.json` before its restart continuation replaces it. These methods exit Unity. The restart check includes archived event payloads, prefab children, custom curves and a deliberately deleted payload asset. Run both Blender versions (5.0 and 5.2), real modal cancellation/removal UI and a representative Humanoid/game check when exporter or importer behavior changes.
+
 Run the direct regression script with a supported Blender executable:
 
 ```shell
@@ -54,7 +64,7 @@ Do not add model preprocess callbacks or GetVersion casually: they can invalidat
 1. Update VERSION, add-on bl_info/version, CHANGELOG and README download examples.
 2. Run packaging and relevant native checks; record precise results and remaining limits.
 3. Commit and push main.
-4. Create and push the matching new tag, such as v0.2.3.
+4. Create and push the matching new tag, such as v0.3.0.
 5. The Release workflow validates the tag/version, tests, builds, uploads assets to a draft and publishes it. Versions beginning with 0. and versions with a suffix are prereleases.
 
 Never move a published tag. Inspect failed release logs/drafts before retrying. Verify public download hashes after publication.

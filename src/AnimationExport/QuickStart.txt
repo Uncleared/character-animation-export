@@ -1,30 +1,28 @@
-Character Animation Export 0.2.3 — Prototype
+Character Animation Export 0.3.0
 
 BLENDER
-Install the inner Blender ZIP: Preferences > Add-ons > Install from Disk.
-In the 3D View: N > Animation Export.
-Choose Export Folder (inside Unity Assets is supported), check clips, press Export.
-Save the blend to remember the folder and clip choices.
-Settings contains rig/props, scale/end bones and advanced options.
+Install the inner Blender ZIP and enable the add-on.
+3D View: N > Animation Export.
+Choose Folder inside Unity Assets > Combined FBX > File Name > check clips > Export.
+Save the blend. Future updates: just Export.
+NLA strips set the ranges automatically, including scaled fractional ranges.
+Body, face and animated props are included in one FBX.
 
-UNITY — ONCE PER CHARACTER
-Import CharacterAnimationExport-Unity-0.2.3.unitypackage.
-Select the export folder: Assets > Animation Import Settings.
+UNITY: ONCE PER CHARACTER
+Install CharacterAnimationExport-Unity-0.3.0.unitypackage.
+Select the export folder > Assets > Animation Import Settings.
 Choose Generic, or Humanoid with the matching Source Avatar.
-Bake Rotation/Y/XZ and the full prop mask default to ON.
-Original facing and XZ origin are preserved by default.
-Future FBXs import normally; no library or JSON import operation is needed.
+Bake Rotation/Y/XZ, full prop mask, original facing and XZ origin default ON.
+Future exports import automatically. Update both packages together.
+
+Unchecking a combined clip asks before removing it. Survivors keep events/references.
+To swap a take: uncheck the alternate, then Settings > original clip's link button.
+Separate FBXs remain available; unchecked separate files stay in place.
+Keep the output folder together when handing it over. No manual JSON import.
 
 EVENTS
-Unity's native FBX Animations > Events editor remains available.
-The optional AnimationEventEditor package adds Tools > Animation Event Editor.
-It works independently on ordinary .anim and imported FBX clips.
-
-Unchecking/removing sources does not delete existing FBXs.
-Keep the automatically maintained AnimationExportData folder beside the FBXs.
-Existing libraries: Tools > Legacy > Character Animation Library.
+Use Unity's native FBX > Animations > Events.
+Optional independent package: Tools > Animation Event Editor.
+Updates preserve event seconds; review cues when retiming the actual gesture.
 
 Guide/downloads: https://github.com/Uncleared/character-animation-export
-
-Event preview: left/middle drag pans; right drag or Alt-left orbits; scroll or Alt-right zooms. F frames; Home resets. Drag the divider for more preview space. Events are not fired during preview.
-The event editor needs no JSON or export metadata.

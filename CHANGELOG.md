@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 — Combined FBX
+
+- Export checked clips into one combined FBX with face and prop animation, geometry once, and automatic NLA ranges including fractional boundaries.
+- Preserve per-take events, masks, settings and surviving references; restore retired clips across Editor restarts.
+- Recover uniquely identifiable unsaved export state and offer direct Continue Existing Export / Save As choices.
+- Replace a published clip's source with an unchecked alternate take while keeping its identity.
+- Guard active-action contamination, report overlapping tracks, and reject conflicting retired names before publication.
+- Preserve old outputs on layout/name changes and preserve published files on cancellation or Undo.
+- Share full-mask path data between takes to reduce import metadata growth.
+- Put combined export first in the short illustrated guide.
+
 ## 0.2.3
 
 - Gate new rig setup until an explicit choice and valid Humanoid Avatar; preserve existing enum values.

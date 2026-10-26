@@ -1,44 +1,35 @@
-# Verification for 0.2.3
+# Verification for 0.3.0
 
-The earlier 0.2.2 authored-facing fix passed 42 direct Unity semantics checks, including default root basis, opt-outs, per-clip overrides, native event preservation and convergence. A representative nine-clip Humanoid comparison removed facing offsets of approximately 20–24 degrees: sampled Smoking yaw differs by at most 0.041 degrees from the original and the largest sampled difference across nine clips is 0.280 degrees. Full action clips and short idle samples in the game again confirmed spawned prop animation and event effects. These are desktop Editor results; final visual acceptance remains with the animator.
-
-The folder-picker change and direct-export regression passed 24 checks on each of Blender 5.0.1 and 5.2.1 LTS, including saved relative paths and stable export identities.
-
-The preview behavior below is unchanged from 0.2.1.
-
-The preview-navigation revision passed 61 checks in Unity 6000.1.7f1 with real UI mouse events and rendered preview images. Checks cover native-style gestures, capture release outside the preview, stable camera state while scrubbing, framing at three model scales/aspect ratios, frame seeking/stepping, nonlooping playback, and unchanged event/source data. The optional editor is installed without exporter/importer assemblies.
-
-A separate event-only project compared a representative Humanoid preview against an initialized Animator graph: all 51 mapped bones and sampled prop transforms matched, preview event firing was disabled, source events were unchanged, and the graph was cleaned up. The Humanoid Animator is explicitly initialized before sampling so the pose is also correct across later UI frames.
-
-The following export checks remain from 0.2.0; the exporter behavior is unchanged in 0.2.1.
-
-Checked on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1. The new direct workflow was exercised in disposable Unity projects before installation in the larger game project.
+Tested on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1.
 
 | Check | Observed result |
 | --- | --- |
-| Direct Blender export | 23 checks passed on each Blender version: saved folder/identity, friendly files inside Assets, strip ranges/rename, nested props, cancellation, unknown-output protection and transient/permanent file locks. |
-| Legacy Blender regression | 49 checks passed on Blender 5.0.1 after the direct-workflow changes. |
-| Direct Unity semantics | 38 assertions passed: three bake defaults, full masks/new props, shape keys, exact native event seconds and payloads, loop/mirror preservation, stable GUID/local IDs and Animator/asset references. |
-| Automatic Unity callbacks | First import and new-prop update configured themselves without calling reconciliation from the test; metadata then remained stable. |
-| Shortened motion | Out-of-range events retained their old data/import bounds, recovery metadata was saved outside Assets, and repeated processing converged. |
-| Optional event editor | Native .anim and selected FBX take edits passed, other-take events/settings stayed unchanged, and stale drafts were blocked. A separate project with only the event installer successfully saved a native event. |
-| Representative Humanoid | Valid copied Avatar; nested lid/lever rotation curves retained. Sampled lid opened about 132 degrees during the 15.87-second motion. |
-| Distribution | Five Python checks passed for reproducible packages, GUIDs, direct Assets support, legacy fixtures and independent event-installer boundaries. |
+| Combined Blender export | 30 checks on each supported version: stable takes, automatic ranges, add/remove/restore/reorder, exact removal consent, cancellation/Undo cleanup, file ownership, layout/name history and 200 takes. |
+| Artist iteration | 20 focused checks on each version: unsaved identity recovery, reverted rename state, lost setup recovery, alternate-source replacement, single-user actions, shared-action track rename, active-action guard, overlap warning, fractional scaled ranges with exact final sample and combined-to-separate rename. |
+| Existing Separate export | 30 checks on each Blender version, including native folder persistence, failed/cancelled rename, file locks and original output protection. |
+| Real Blender UI | Double-click guard, modal export, native Undo cancellation before cached IDs are freed, clean hooks and subsequent export passed in both versions. The guide shows the actual generated-example panel. |
+| Unity Generic combined | 135 checks: body/prop/face sampling against Separate; native event seconds/payloads, GUID/local IDs, Animator references and settings through clip lifecycle; new-child/full masks, custom per-take masks, selected-take independent event editing, shortened-event recovery and 200 takes. Unchanged reconciliation requests zero reimports. |
+| Artist recovery in Unity | 13 checks before restart and 12 after: recovered Blender IDs, alternate-source identity/events, exact fractional durations, removed/readded clips, prefab-child event payload, loop/custom curves and surviving references. Deleting a payload while a clip is retired warns without blocking the other clips. |
+| Existing Separate Unity | 49 native contract checks passed after the importer changes. |
+| Representative Humanoid | 490 checks across eight temporary source configurations. All nine clips retain the 64 expected facial channels and lid/lever curves, and all 16 native events survive. A neutral extra source overlay channel is retained. Maximum sampled body/prop rotation difference was zero; largest position difference was 0.081mm and facial weight difference about 0.0011. The lighter lid opened about 132 degrees in native Animator evaluation. |
+| Actual game controller | All nine product-generated combined clips played through the live character controller. Beer/packet/cigarette/lighter spawning, flame/smoke events and lid/lever motion passed. Captured game camera showed the expected facing. The source blend, prefab and authored scenes were restored to their pre-test hashes. |
+| Scale | 200 short generated takes exported/imported successfully in one approximately 4.37MB FBX. The generated-rig import metadata was approximately 478KB. These are test-fixture measurements, not estimates for 200 production animations or player build size. |
+| Distribution | Five reproducibility/source/metadata/independent-installer checks passed. The actual Blender ZIP exported two takes after isolated extraction. The actual Unity package imported into a fresh project, configured two takes and converged; the optional event editor remained absent. Initial hierarchy setup uses at most two configuration passes; subsequent unchanged checks request zero reimports. |
 
-The representative Humanoid, production assets, Avatar mapping and local recovery data are not distributed. The public example and fixture generator use original generated geometry.
+These are desktop Editor checks, not headset measurements or final artist acceptance. Production characters, gameplay assets, local evidence and recovery data are not distributed.
 
-The importer uses post-import callbacks and deferred, targeted configuration. Adding model preprocessing callbacks to the original prototype invalidated the large host project's FBX import cache; those callbacks were removed. An early path filter does not prevent that Unity cache invalidation. The final automatic-import behavior was verified separately in an isolated project.
+## Behavior and limits
 
-Native importer event times are normalized internally; the tool explicitly preserves seconds when clip duration changes. This protects timing data, but cannot infer whether an edited gesture now needs a differently placed cue. A shortened clip that excludes a cue requires correction; retaining its old import bounds cannot restore motion removed from the FBX.
+- Native event seconds and payloads survive motion updates and moving complete strips. The tool cannot infer where a cue should move when the gesture itself is retimed. A shortened take cannot restore motion beyond its new end; the old event data and bounds remain available for correction.
+- Readding the same identity restores saved native event/settings data from the ordinary FBX metadata. Deleted payload assets become empty references with a warning. Full recovery backups remain outside Assets.
+- Unsaved-state identity recovery requires a unique published source binding and name. Ambiguous source changes require an explicit Replace Source choice; the exporter does not guess which game reference to replace.
+- Removed names are protected against accidental rebinding. Use Replace Source to keep the original identity when choosing a different take. Explicit Export Name changes create new identities.
+- Combined contains checked clips. Separate leaves unchecked files on disk. Changing filename/layout/folder preserves old files but does not migrate game references.
+- NLA layers, overlap and extrapolation are sampled as authored. Overlaps warn; an active rig action or NLA tweak/solo state must be resolved before export. Prop transform animation and relative shape keys are supported; arbitrary Blender simulations, material effects and custom logic do not automatically become FBX animation.
+- Exact fractional NLA ranges are supported in Combined; Separate requires whole-frame boundaries. Combined uses a version-bounded native adapter for the bundled exporters in Blender 5.0 and 5.2.
+- Native custom masks are preserved. Custom extra/split native clip definitions fail clearly instead of being overwritten. Concurrent publication from multiple Blender processes is not supported; changed on-disk publications are detected.
+- Both Blender and Unity packages must be updated together for combined metadata. GitHub CI checks packaging and Python logic; native Blender/Unity checks are recorded maintenance runs.
 
-Material animation, arbitrary Blender-only behavior/simulations, fractional strip boundaries, ambiguous reused-action relinks, other app versions and final animator/gameplay usability are outside these results. Custom Copy From Other masks are preserved rather than automatically replaced. Automatic reconfiguration waits until Edit Mode.
+Independent Claude Opus5.5 reviewed the design and, at the user's explicit request, artist iteration edge cases. Concrete findings were investigated, fixed and tested. These post-consultation fixes have not yet received the gated implementation review; the human functional check and final acceptance remain pending.
 
-The 0.1 legacy workflow previously passed 14 native Unity tests and 49 Blender checks on both Blender versions; see the legacy guide. Its native-clip size and full-project reference-scan cost still apply to that workflow.
-
-GitHub CI checks distribution and pure Python logic. It does not run Blender or Unity. The Smoking facing retest was accepted by the user. Two implementation reviews ran with Claude Opus5.5. Final setup/modal/convergence fixes were applied and tested after the second review; they were not re-reviewed. Final human acceptance remains pending.
-
-Maintenance review validation: native custom Create From This Model masks, unconfigured-folder non-mutation, delayed setup convergence, and blocked-event restart stability are covered by focused native checks. Blender failed/cancelled-rename rollback tests pass on both tested versions. Combined/lightweight geometry experiments are separate from this released workflow.
-
-0.2.3 final checks:49 native Unity assertions; configured Humanoid input preserved while setup is unset or its Avatar is missing; unchanged Humanoid settings converge without another import.30 direct-export checks pass on Blender5.0.1 and5.2.1LTS, including failed rename and pre-bake cancellation. Real GUI button exports and immediate second-click rejection pass on both Blender versions. Blocked-event recovery with a persisted clip reference remains unchanged across two Editor sessions. Automatic first import/new-prop callbacks preserve references and converge.
-
-Export names are ownership keys. Returning to a filename retained by an older published clip identity is blocked rather than reclaiming it automatically. Same-basename copies retain profile identity; a new character should use a distinct saved source/export profile. Sidecar/hash mismatches are ignored until matching source and metadata arrive; manually replacing an owned FBX is outside normal export. Native event seconds do not automatically follow a retimed gesture.
+Previous behavior and fixes are retained in the [changelog](../CHANGELOG.md). [Maintenance checks](MAINTAINING.md).

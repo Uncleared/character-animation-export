@@ -88,6 +88,7 @@ def new_id():
 
 
 DIRECT_SCHEMA = 2
+COMBINED_SCHEMA = 3
 DATA_FOLDER = "AnimationExportData"
 
 
@@ -127,9 +128,10 @@ def direct_inventory(root):
         return records
     for path in folder.glob("*.animation-export.json"):
         data = json.loads(path.read_text(encoding="utf-8"))
-        if data.get("schemaVersion") != DIRECT_SCHEMA or not valid_id(data.get("profileId")):
+        if data.get("schemaVersion") not in (DIRECT_SCHEMA, COMBINED_SCHEMA) or not valid_id(data.get("profileId")):
             raise ValueError(f"Invalid export metadata: {path.name}")
-        for row in data.get("clips", []):
+        rows = data.get('outputs', []) if data.get('schemaVersion') == COMBINED_SCHEMA else data.get('clips', [])
+        for row in rows:
             filename = row.get("file", "")
             if not filename and not row.get('exported'):
                 continue
@@ -152,6 +154,8 @@ def validate_direct_targets(root, profile_id, rows):
         key = filename.casefold()
         owner = inventory.get(key)
         if owner and owner[0] != (profile_id, clip_id):
+            if clip_id == profile_id:
+                raise ValueError(f"Another character already uses File Name '{name}'. Choose a different File Name.")
             raise ValueError(f"{filename} belongs to another clip. Choose another export name.")
         target = existing.get(key)
         meta = existing.get((filename + '.meta').casefold())
@@ -167,8 +171,7 @@ def publish_direct(root, manifest, staged_files):
     """Publish complete same-volume files, preserving Unity metadata and failed recovery."""
     root = export_root(root, allow_assets=True)
     root.mkdir(parents=True, exist_ok=True)
-    validate_direct_targets(root, manifest['profileId'],
-                            [(r['id'], r['name']) for r in manifest['clips'] if r.get('exported')])
+    validate_direct_targets(root, manifest['profileId'], publication_targets(manifest, staged_files))
     work = Path(tempfile.mkdtemp(prefix='publish-', dir=staging_root(root)))
     replacements = []
     backups = []
@@ -215,3 +218,32 @@ def publish_direct(root, manifest, staged_files):
     finally:
         if not keep_recovery:
             shutil.rmtree(work)
+
+
+def publication_targets(manifest, staged_files):
+    rows = manifest.get('outputs', []) if manifest.get('schemaVersion') == COMBINED_SCHEMA else manifest['clips']
+    result = []
+    for filename in staged_files:
+        matches = [row for row in rows if row.get('file') == filename]
+        if len(matches) != 1 or not valid_id(matches[0].get('id')):
+            raise ValueError('Invalid output ownership for ' + filename)
+        result.append((matches[0]['id'], filename[:-4]))
+    return result
+
+
+def output_history(previous):
+    if previous.get('schemaVersion') == COMBINED_SCHEMA:
+        return {row['file']: dict(row) for row in previous.get('outputs', [])}
+    return {row['file']: dict(id=row['id'], file=row['file'], sha256=row['sha256'], kind='separate')
+            for row in previous.get('clips', []) if row.get('file')}
+
+
+def require_unchanged_publication(path, previous):
+    current = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    if current != previous:
+        raise ValueError('These outputs changed during export. Export again to use the current clip list.')
+
+
+def removals(previous, filename, checked_ids):
+    return [dict(row) for row in previous.get('clips', [])
+            if row.get('file') == filename and row['id'] not in checked_ids]
