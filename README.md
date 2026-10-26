@@ -6,19 +6,21 @@ Export Blender character animations and their props straight into Unity. NLA str
 
 ## Download and install
 
-Get **CharacterAnimationExport-Prototype-0.2.1.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
+Get **CharacterAnimationExport-Prototype-0.2.2.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases), then extract it.
 
 | Installer inside the bundle | Install in |
 | --- | --- |
-| CharacterAnimationExport-0.2.1.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
-| CharacterAnimationExport-Unity-0.2.1.unitypackage | Unity: Assets → Import Package → Custom Package. |
-| AnimationEventEditor-0.2.1.unitypackage | Optional independent Unity event editor. |
+| CharacterAnimationExport-0.2.2.zip | Blender: Preferences → Add-ons → Install from Disk. Select this inner ZIP and enable it. |
+| CharacterAnimationExport-Unity-0.2.2.unitypackage | Unity: Assets → Import Package → Custom Package. |
+| AnimationEventEditor-0.2.2.unitypackage | Optional independent Unity event editor. |
 
 ## Animator: everyday use
 
 1. Open your character blend. In the 3D View, press **N → Animation Export**.
 2. Choose **Export Folder** with the folder button. **Inside Unity's Assets is supported.**
 3. Check your clips and press **Export**.
+
+![Blender exporter: choose an output folder, check clips and press Export](docs/images/blender-export.png)
 
 Save the blend to remember the folder and clip choices. Repeat Export whenever motion changes. New/resized strips supply their own ranges. If several rigs exist, choose the character once under Settings.
 
@@ -30,6 +32,10 @@ Select the output folder and choose **Assets → Animation Import Settings** (al
 
 Future FBXs import normally. **Bake Rotation/Y/XZ into Pose and the full transform/prop mask default to ON**, including new nested props. Defaults and per-clip overrides are tucked under foldouts.
 
+Authored facing and the horizontal origin are preserved by default. Keep Original Facing and Keep Original XZ Origin are under Defaults, with per-clip root overrides when needed.
+
+![Unity import defaults, including bake settings, original facing and all prop transforms](docs/images/unity-import-settings.png)
+
 Use the FBX clips directly in your existing Animator or animation system. Exporting does not automatically replace existing game references.
 
 ## Events
@@ -39,6 +45,10 @@ Use Unity's native **FBX Import Settings → Animations → Events**. Saved even
 Or install the optional event package and open **Tools → Animation Event Editor**. It edits .anim and FBX clips **without the exporter/importer installed**. Save/Discard are explicit; an outdated draft cannot overwrite newer native edits. No export metadata or JSON file is needed.
 
 The preview uses Unity-style navigation: **left/middle drag pans**, **right drag or Alt-left drag orbits**, and **scroll or Alt-right drag zooms**. **F** frames the current pose; **Home** resets the view. Drag the divider for more space. Frame stepping, a frame-number field, speed and looping help place cues precisely. Humanoid preview uses Animator evaluation; previewing does not fire animation events.
+
+![Independent Unity event editor with preview navigation, playback controls and an example event](docs/images/unity-animation-events.png)
+
+Screenshots use the supplied generated example rig.
 
 <details>
 <summary>Props, NLA and advanced options</summary>

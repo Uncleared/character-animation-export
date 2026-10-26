@@ -27,6 +27,8 @@ checks=[]
 def check(value,label):
     if not value: raise AssertionError(label)
     checks.append(label)
+
+check(profile.bl_rna.properties['output_folder'].is_path_supports_blend_relative,'folder picker accepts blend-relative paths')
 def snapshot(label):
     target=OUT/'Fixtures'/label
     shutil.copytree(root,target,ignore=shutil.ignore_patterns('*.meta'))

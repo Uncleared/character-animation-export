@@ -24,6 +24,8 @@ namespace CharacterAnimationExport.Direct
             advanced.Add(new PropertyField(serializedObject.FindProperty("bakeRotation"), "Bake Rotation into Pose"));
             advanced.Add(new PropertyField(serializedObject.FindProperty("bakeY"), "Bake Y into Pose"));
             advanced.Add(new PropertyField(serializedObject.FindProperty("bakeXZ"), "Bake XZ into Pose"));
+            advanced.Add(new PropertyField(serializedObject.FindProperty("originalOrientation"), "Keep Original Facing"));
+            advanced.Add(new PropertyField(serializedObject.FindProperty("originalPositionXZ"), "Keep Original XZ Origin"));
             advanced.Add(new PropertyField(serializedObject.FindProperty("includeAllTransforms"), "Include All Transforms and Props"));
             var overrides = new Foldout { text = "Clip Overrides", value = false };
             root.Add(overrides);

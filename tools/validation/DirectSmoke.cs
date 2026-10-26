@@ -57,6 +57,7 @@ public static class DirectSmoke
             Check(Math.Abs(clip.length-source.clip.duration)<0.001f,"source strip duration");
             var importer=(ModelImporter)AssetImporter.GetAtPath(path);var definition=importer.clipAnimations.Single();
             Check(definition.lockRootRotation&&definition.lockRootHeightY&&definition.lockRootPositionXZ,"three automatic Bake Into Pose defaults");
+            Check(definition.keepOriginalOrientation&&definition.keepOriginalPositionXZ,"authored facing and horizontal origin preserved by default");
             Mask(definition,"Nested Moving Lid");
             var bindings=AnimationUtility.GetCurveBindings(clip);
             Check(bindings.Any(item=>item.path.Contains("Nested Moving Lid")&&item.propertyName.Contains("Rotation")),"nested lid rotation curves");
@@ -99,6 +100,13 @@ public static class DirectSmoke
             AssetDatabase.CreateAsset(settings,source.SettingsPath);AssetDatabase.SaveAssetIfDirty(settings);
             DirectAnimationImporter.Reconcile(path);importer=(ModelImporter)AssetImporter.GetAtPath(path);
             Check(!importer.clipAnimations.Single().lockRootPositionXZ,"folder defaults opt-out applied");
+            settings.originalOrientation=false;settings.originalPositionXZ=false;
+            DirectAnimationImporter.Reconcile(path);definition=((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single();
+            Check(!definition.keepOriginalOrientation&&!definition.keepOriginalPositionXZ,"folder root-basis opt-out applied");
+            settings.overrides.Add(new ClipImportOverride{clip=Clip(path),overrideRoot=true,originalOrientation=true,originalPositionXZ=true});
+            DirectAnimationImporter.Reconcile(path);definition=((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single();
+            Check(definition.keepOriginalOrientation&&definition.keepOriginalPositionXZ,"per-clip authored root-basis override applied");
+            Check(!DirectAnimationImporter.Reconcile(path),"root-basis override converges without repeat import");
             var custom=new AvatarMask();custom.transformCount=1;custom.SetTransformPath(0,"");custom.SetTransformActive(0,true);AssetDatabase.CreateAsset(custom,Root+"/Custom.mask");
             definition=importer.clipAnimations.Single();definition.maskType=ClipAnimationMaskType.CopyFromOther;definition.maskSource=custom;definition.ConfigureClipFromMask(custom);importer.clipAnimations=new[]{definition};importer.SaveAndReimport();
             DirectAnimationImporter.Reconcile(path);Check(((ModelImporter)AssetImporter.GetAtPath(path)).clipAnimations.Single().maskSource==custom,"native custom mask retained");

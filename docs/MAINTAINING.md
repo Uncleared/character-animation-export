@@ -54,7 +54,7 @@ Do not add model preprocess callbacks or GetVersion casually: they can invalidat
 1. Update VERSION, add-on bl_info/version, CHANGELOG and README download examples.
 2. Run packaging and relevant native checks; record precise results and remaining limits.
 3. Commit and push main.
-4. Create and push the matching new tag, such as v0.2.1.
+4. Create and push the matching new tag, such as v0.2.2.
 5. The Release workflow validates the tag/version, tests, builds, uploads assets to a draft and publishes it. Versions beginning with 0. and versions with a suffix are prereleases.
 
 Never move a published tag. Inspect failed release logs/drafts before retrying. Verify public download hashes after publication.

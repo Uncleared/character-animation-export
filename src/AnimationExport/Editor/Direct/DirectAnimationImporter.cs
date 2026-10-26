@@ -218,6 +218,8 @@ namespace CharacterAnimationExport.Direct
             definition.lockRootRotation = change != null && change.overrideRoot ? change.bakeRotation : settings == null || settings.bakeRotation;
             definition.lockRootHeightY = change != null && change.overrideRoot ? change.bakeY : settings == null || settings.bakeY;
             definition.lockRootPositionXZ = change != null && change.overrideRoot ? change.bakeXZ : settings == null || settings.bakeXZ;
+            definition.keepOriginalOrientation = change != null && change.overrideRoot ? change.originalOrientation : settings == null || settings.originalOrientation;
+            definition.keepOriginalPositionXZ = change != null && change.overrideRoot ? change.originalPositionXZ : settings == null || settings.originalPositionXZ;
             if (change != null && change.overrideMask)
             {
                 if (change.mask == null) throw new InvalidOperationException("Assign the override mask or disable its override.");

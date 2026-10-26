@@ -95,6 +95,8 @@ def build(destination=None):
         "ExampleCharacter.blend": (ROOT / "examples" / "ExampleCharacter.blend").read_bytes(),
         "CHANGELOG.md": (ROOT / "CHANGELOG.md").read_bytes(),
     })
+    bundle.update({path.relative_to(ROOT).as_posix(): path.read_bytes()
+                   for path in sorted((ROOT / "docs" / "images").glob("*.png"))})
     downloads[f"CharacterAnimationExport-Prototype-{release}.zip"] = zip_bytes(bundle)
     hashes = "".join(hashlib.sha256(contents).hexdigest() + "  " + name + "\n"
                      for name, contents in sorted(downloads.items()))

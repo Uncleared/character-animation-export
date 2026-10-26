@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 1),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 2, 2),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 
@@ -383,7 +383,7 @@ class CAESettings(bpy.types.PropertyGroup):
     source_mode: EnumProperty(name='Clip Source', items=[('NLA', 'NLA Strips', 'Read ranges from a character clip track'),
         ('ACTIONS', 'Actions', 'Use chosen actions; object/prop tracks are sampled at each action range')])
     track_index: EnumProperty(name='Clip Track', items=_track_items)
-    output_folder: StringProperty(name='Export Folder', subtype='DIR_PATH')
+    output_folder: StringProperty(name='Export Folder', subtype='DIR_PATH', options={'PATH_SUPPORTS_BLEND_RELATIVE'})
     profile_id: StringProperty()
     source_file: StringProperty()
     delivery: EnumProperty(name='Delivery', items=[('DIRECT', 'FBX Files', 'Export directly into the chosen folder'),

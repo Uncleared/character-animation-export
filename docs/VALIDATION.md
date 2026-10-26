@@ -1,4 +1,10 @@
-# Verification for 0.2.1
+# Verification for 0.2.2
+
+The authored-facing fix passed 42 direct Unity semantics checks, including default root basis, opt-outs, per-clip overrides, native event preservation and convergence. A representative nine-clip Humanoid comparison removed facing offsets of approximately 20–24 degrees: sampled Smoking yaw differs by at most 0.041 degrees from the original and the largest sampled difference across nine clips is 0.280 degrees. Full action clips and short idle samples in the game again confirmed spawned prop animation and event effects. These are desktop Editor results; final visual acceptance remains with the animator.
+
+The folder-picker change and direct-export regression passed 24 checks on each of Blender 5.0.1 and 5.2.1 LTS, including saved relative paths and stable export identities.
+
+The preview behavior below is unchanged from 0.2.1.
 
 The preview-navigation revision passed 61 checks in Unity 6000.1.7f1 with real UI mouse events and rendered preview images. Checks cover native-style gestures, capture release outside the preview, stable camera state while scrubbing, framing at three model scales/aspect ratios, frame seeking/stepping, nonlooping playback, and unchanged event/source data. The optional editor is installed without exporter/importer assemblies.
 

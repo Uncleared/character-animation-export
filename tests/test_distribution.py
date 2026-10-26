@@ -38,6 +38,10 @@ class DistributionTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(first[f"CharacterAnimationExport-Prototype-{release}.zip"])) as archive:
             self.assertIn("ExampleCharacter.blend", archive.namelist())
             self.assertIn("README.md", archive.namelist())
+            for image in (ROOT / "docs" / "images").glob("*.png"):
+                relative = image.relative_to(ROOT).as_posix()
+                self.assertIn(relative, archive.namelist())
+                self.assertEqual(archive.read(relative), image.read_bytes())
             self.assertIsNone(archive.testzip())
 
     def test_unity_package_keeps_metadata_and_excludes_fixtures(self):

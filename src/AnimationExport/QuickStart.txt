@@ -1,4 +1,4 @@
-Character Animation Export 0.2.1 — Prototype
+Character Animation Export 0.2.2 — Prototype
 
 BLENDER
 Install the inner Blender ZIP: Preferences > Add-ons > Install from Disk.
@@ -8,10 +8,11 @@ Save the blend to remember the folder and clip choices.
 Settings contains rig/props, scale/end bones and advanced options.
 
 UNITY — ONCE PER CHARACTER
-Import CharacterAnimationExport-Unity-0.2.1.unitypackage.
+Import CharacterAnimationExport-Unity-0.2.2.unitypackage.
 Select the export folder: Assets > Animation Import Settings.
 Choose Generic, or Humanoid with the matching Source Avatar.
 Bake Rotation/Y/XZ and the full prop mask default to ON.
+Original facing and XZ origin are preserved by default.
 Future FBXs import normally; no library or JSON import operation is needed.
 
 EVENTS

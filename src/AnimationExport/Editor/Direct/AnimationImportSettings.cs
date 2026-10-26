@@ -17,6 +17,7 @@ namespace CharacterAnimationExport.Direct
         public AnimationClip clip;
         public bool overrideRoot;
         public bool bakeRotation = true, bakeY = true, bakeXZ = true;
+        public bool originalOrientation = true, originalPositionXZ = true;
         public bool overrideMask;
         public AvatarMask mask;
     }
@@ -28,6 +29,10 @@ namespace CharacterAnimationExport.Direct
         public Avatar sourceAvatar;
         public string motionNode;
         public bool bakeRotation = true, bakeY = true, bakeXZ = true, includeAllTransforms = true;
+        [Tooltip("Use the authored facing instead of calculating a different body-facing reference for each clip.")]
+        public bool originalOrientation = true;
+        [Tooltip("Keep the authored horizontal origin so separately exported clips share the same reference.")]
+        public bool originalPositionXZ = true;
         public List<ClipImportOverride> overrides = new List<ClipImportOverride>();
 
         void OnValidate()

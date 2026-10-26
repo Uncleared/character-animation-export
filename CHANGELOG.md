@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — Authored facing and illustrated guide
+
+- Preserve original root orientation and horizontal origin by default instead of deriving a separate body-facing reference per clip.
+- Expose folder and per-clip root-basis controls alongside bake options.
+- Enable blend-relative paths in Blender’s folder picker.
+- Add real Blender and Unity interface screenshots to the guide.
+
 ## 0.2.1 — Preview navigation
 
 - Add persistent pan/orbit/zoom, current-pose framing and view reset.
