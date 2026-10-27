@@ -39,7 +39,7 @@ def prepare(destination, fixtures=None, mode="direct", unity_version="6000.1.7f1
     if mode in ("direct", "combined"):
         shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(fixture_source, destination / "ExternalFixtures")
-        scripts = ("DirectSmoke.cs", "AutomaticDirectSmoke.cs") if mode == "direct" else ("CombinedSmoke.cs",)
+        scripts = ("DirectSmoke.cs", "AutomaticDirectSmoke.cs") if mode == "direct" else ("CombinedSmoke.cs", "ImportSettingsSmoke.cs")
         if artist_fixtures is not None:
             if mode != "combined":
                 raise ValueError("Artist fixtures require --mode combined.")

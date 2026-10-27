@@ -99,6 +99,8 @@ def build(destination=None):
                    for path in sorted((ROOT / "docs" / "images").glob("*.png"))})
     bundle.update({path.relative_to(ROOT).as_posix(): path.read_bytes()
                    for path in sorted((ROOT / "docs").rglob("*.md"))})
+    bundle.update({path.relative_to(ROOT).as_posix(): path.read_bytes()
+                   for path in sorted((ROOT / "docs" / "benchmarks").glob("*.csv"))})
     downloads[f"CharacterAnimationExport-Prototype-{release}.zip"] = zip_bytes(bundle)
     hashes = "".join(hashlib.sha256(contents).hexdigest() + "  " + name + "\n"
                      for name, contents in sorted(downloads.items()))

@@ -17,6 +17,7 @@ namespace CharacterAnimationEvents
         [Serializable] sealed class Draft { public string baseline; public List<EventValue> events = new List<EventValue>(); }
         [SerializeField] AnimationClip clip;
         [SerializeField] GameObject previewModel;
+        [SerializeField] bool previewModelIsAuto;
         [SerializeField] GameObject framedModel;
         [SerializeField] PreviewCameraState cameraState = new PreviewCameraState();
         [SerializeField] float playbackSpeed = 1;
@@ -73,7 +74,12 @@ namespace CharacterAnimationEvents
             });
             modelField = new ObjectField("Preview Model") { objectType = typeof(GameObject), allowSceneObjects = false, value = previewModel };
             rootVisualElement.Add(modelField);
-            modelField.RegisterValueChangedCallback(change => { previewModel = change.newValue as GameObject; ResetPreview(); });
+            modelField.RegisterValueChangedCallback(change =>
+            {
+                previewModel = change.newValue as GameObject;
+                previewModelIsAuto = previewModel == null;
+                ResetPreview();
+            });
             var navigation = new VisualElement(); navigation.AddToClassList("preview-toolbar"); rootVisualElement.Add(navigation);
             var caption = new Label("Preview"); caption.AddToClassList("preview-caption"); navigation.Add(caption);
             navigation.Add(new Button(() => { preview?.Frame(false); Repaint(); }) { text = "Frame", tooltip = "Fit the current pose to the preview (F)." });
@@ -138,8 +144,11 @@ namespace CharacterAnimationEvents
                 timeline.SetValueWithoutNotify(0);
                 notice.text = dirty ? "Restored an unsaved draft. Save or reload it." : "Events use seconds from the start of this clip.";
                 notice.messageType = HelpBoxMessageType.Info;
-                if (AssetDatabase.GetAssetPath(clip).EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+                if ((previewModel == null || previewModelIsAuto) && AssetDatabase.GetAssetPath(clip).EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+                {
                     previewModel = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GetAssetPath(clip));
+                    previewModelIsAuto = true;
+                }
                 modelField?.SetValueWithoutNotify(previewModel);
                 RenderEvents(); ResetPreview();
             }

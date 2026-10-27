@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 3, 0),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 4, 0),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 
@@ -9,13 +9,14 @@ import json
 import math
 import tempfile
 from types import SimpleNamespace
-from . import core, combined
+from . import core, combined, lightweight
 
 _busy = False
 _signatures = {}
 _relink_choices = []
 _track_choices = {}
 _active_export = None
+_geometry_cache = {}
 
 
 def _suggested_name(settings):
@@ -209,6 +210,27 @@ def _read_publication(settings, path):
         raise ValueError('This folder has an earlier export from this character. Choose Continue Existing Export below.')
     _recover_clip_ids(settings, previous)
     return previous
+
+
+def _geometry_hint(settings):
+    if not settings.output_folder or not settings.profile_id:
+        return ''
+    try:
+        path = Path(bpy.path.abspath(settings.output_folder)) / core.metadata_file(settings.profile_id)
+        stat = path.stat()
+        key = (stat.st_mtime_ns, stat.st_size)
+        cached = _geometry_cache.get(str(path))
+        if cached is None or cached[0] != key:
+            publication = json.loads(path.read_text(encoding='utf-8'))
+            files = {} if publication.get('layout') == 'combined' else {
+                row['file']: row.get('geometry', 'full') for row in publication.get('clips', [])
+                if row.get('file') and row.get('state') == 'present'}
+            cached = (key, files); _geometry_cache[str(path)] = cached
+        other = 'full' if settings.lightweight else 'lightweight'
+        count = sum(mode == other for mode in cached[1].values())
+        return f"{count} {'file remains' if count == 1 else 'files remain'} {'Full' if settings.lightweight else 'Lightweight'}." if count else ''
+    except (OSError, ValueError, KeyError, TypeError):
+        return ''
 
 
 def _objects(scene, settings):
@@ -431,6 +453,11 @@ def export_package_steps(context, settings, cancel=None, direct=False, confirm_r
                     global_scale=1.0, apply_unit_scale=True, apply_scale_options=settings.scale_mode,
                     use_space_transform=True, bake_space_transform=False, add_leaf_bones=settings.leaf_bones,
                     use_armature_deform_only=False, axis_forward='-Z', axis_up='Y', path_mode='AUTO', embed_textures=False)
+                reduced = False
+                if direct and settings.lightweight:
+                    reduction = lightweight.reduce_file(path)
+                    reduced = reduction['bytes'] < reduction['originalBytes']
+                    manifest['warnings'].extend(record.export_name + ': ' + message for message in reduction['warnings'])
                 take = _take_name(path)
                 clip_id = pending_ids.get(record.clip_id, record.clip_id)
                 old_records[clip_id] = dict(id=clip_id, name=record.export_name, state='present', enabled=True,
@@ -438,6 +465,8 @@ def export_package_steps(context, settings, cancel=None, direct=False, confirm_r
                     endFrame=record.end, fps=fps, duration=(record.end - record.start) / fps,
                     sourceBinding=dict(track=record.track_name, strip=record.source_name, action=record.action.name),
                     objectPaths=[_path(o) for o in included])
+                if direct:
+                    old_records[clip_id]['geometry'] = 'lightweight' if reduced else 'full'
                 staged[relative] = path
                 context.window_manager.progress_update(index + 1)
                 yield record.export_name
@@ -541,6 +570,8 @@ class CAESettings(bpy.types.PropertyGroup):
     source_file: StringProperty()
     export_layout: EnumProperty(name='Export', items=[('COMBINED','Combined FBX','One file containing the checked clips'),
         ('SEPARATE','Separate FBXs','One file for each checked clip')], default='SEPARATE', update=_layout_changed)
+    lightweight: BoolProperty(name='Lightweight', default=False,
+        description='Reduce repeated geometry while keeping body, facial and prop animation. Updates checked files in place; preview and render with the full character prefab')
     combined_name: StringProperty(name='File Name', default='Character_Animations', description='Changing this creates a new FBX; existing game references continue to use the old file')
     published_file: StringProperty()
     delivery: EnumProperty(name='Delivery', items=[('DIRECT', 'FBX Files', 'Export directly into the chosen folder'),
@@ -747,6 +778,10 @@ class CAE_OT_source_identity(bpy.types.Operator):
                     profile.export_layout = 'COMBINED'; profile.combined_name = Path(next(iter(files))).stem
                 elif previous.get('layout') != 'combined':
                     profile.export_layout = 'SEPARATE'
+                    modes = {row.get('geometry', 'full') for row in previous.get('clips', [])
+                             if row.get('file') and row.get('state') == 'present'}
+                    if len(modes) == 1:
+                        profile.lightweight = modes == {'lightweight'}
                 _recover_clip_ids(profile, previous)
         profile.source_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
         return {'FINISHED'}
@@ -841,6 +876,11 @@ class CAE_PT_export(bpy.types.Panel):
                 layout.prop(settings, 'combined_name')
                 if settings.published_file and settings.published_file != settings.combined_name + '.fbx':
                     layout.label(text='New FBX: update Unity references.', icon='INFO')
+            else:
+                layout.prop(settings, 'lightweight')
+                hint = _geometry_hint(settings)
+                if hint:
+                    layout.label(text=hint, icon='INFO')
         current_file = Path(bpy.data.filepath).name if bpy.data.filepath else ''
         if settings.source_file and settings.source_file != current_file:
             layout.label(text='Renamed or copied .blend:', icon='INFO')

@@ -18,6 +18,24 @@ namespace CharacterAnimationExport.Direct
             root.Add(new Label(settings.characterName + " — Animation Import"));
             root.Add(new PropertyField(serializedObject.FindProperty("rig"), "Rig"));
             root.Add(new PropertyField(serializedObject.FindProperty("sourceAvatar"), "Source Avatar"));
+            root.Add(new PropertyField(serializedObject.FindProperty("loopIdleClips"), "Loop Idle Clips"));
+            root.Add(new PropertyField(serializedObject.FindProperty("setCompression"), "Set Animation Compression"));
+            var compression = new VisualElement { name = "compressionControls" };
+            root.Add(compression);
+            compression.Add(new PropertyField(serializedObject.FindProperty("compression"), "Anim. Compression"));
+            var errors = new VisualElement { name = "compressionErrors" };
+            compression.Add(errors);
+            errors.Add(new FloatField("Rotation Error") { name = "rotationError", bindingPath = "rotationError", isDelayed = true });
+            errors.Add(new FloatField("Position Error") { name = "positionError", bindingPath = "positionError", isDelayed = true });
+            errors.Add(new FloatField("Scale Error") { name = "scaleError", bindingPath = "scaleError", isDelayed = true });
+            void UpdateCompressionControls()
+            {
+                compression.SetEnabled(serializedObject.FindProperty("setCompression").boolValue);
+                errors.SetEnabled(serializedObject.FindProperty("compression").intValue != (int)AnimationCompression.Off);
+            }
+            root.TrackPropertyValue(serializedObject.FindProperty("setCompression"), _ => UpdateCompressionControls());
+            root.TrackPropertyValue(serializedObject.FindProperty("compression"), _ => UpdateCompressionControls());
+            UpdateCompressionControls();
             var advanced = new Foldout { text = "Defaults", value = false };
             root.Add(advanced);
             advanced.Add(new PropertyField(serializedObject.FindProperty("motionNode"), "Generic Motion Root"));

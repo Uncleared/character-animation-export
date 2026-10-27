@@ -1,4 +1,4 @@
-Character Animation Export 0.3.0
+Character Animation Export 0.4.0
 
 BLENDER
 Install the inner Blender ZIP and enable the add-on.
@@ -8,11 +8,21 @@ Save the blend. Future updates: just Export.
 NLA strips set the ranges automatically, including scaled fractional ranges.
 Body, face and animated props are included in one FBX.
 
+SMALLER SEPARATE FILES
+Choose Separate FBXs > Lightweight > Export.
+Keep the same Folder to update existing separate files, events and references in place.
+Uncheck Lightweight and Export to restore full geometry. Only checked clips update.
+Render and preview with the full character prefab, not the small animation carriers.
+
 UNITY: ONCE PER CHARACTER
-Install CharacterAnimationExport-Unity-0.3.0.unitypackage.
+Install CharacterAnimationExport-Unity-0.4.0.unitypackage.
 Select the export folder > Assets > Animation Import Settings.
 Choose Generic, or Humanoid with the matching Source Avatar.
 Bake Rotation/Y/XZ, full prop mask, original facing and XZ origin default ON.
+Compression defaults to Optimal: rotation 0.01, position 0.01, scale 0.5.
+Idle names automatically enable Loop Time. Clip Overrides can make exceptions.
+Turn either option off to keep and edit its native Unity values manually.
+Compression uses Unity's native compressor; choose Off for uncompressed curves.
 Future exports import automatically. Update both packages together.
 
 Unchecking a combined clip asks before removing it. Survivors keep events/references.

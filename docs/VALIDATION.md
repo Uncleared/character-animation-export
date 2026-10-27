@@ -1,4 +1,29 @@
-# Verification for 0.3.0
+# Verification for 0.4.0
+
+Tested on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1.
+
+| Check | Observed result |
+| --- | --- |
+| Native Blender export | 40 checks per version: Full/Lightweight/Full, chosen Actions, NLA, stable IDs/files, partial export, save/reopen, cancellation and staged failure. No-face, multiple-face, weighted shape props, shared meshes, Unicode shapes, empty channels and negative scale included. |
+| Failure safety | Eight checks per version: unknown geometry/animated representation retained whole; dangling links, incomplete clusters, changed codec API, failed validation, staging lock and corrupt input preserve the old file. |
+| Unity motion and migration | 361 checks across Generic variants, Actions and nine Humanoid clips. Dense applied pose, face, prop and advancing root-motion differences measured zero with matching Off and Optimal compression. Events/payloads, masks, custom curves, root/loop flags, clip identities, controllers and overrides survived in-place switches. |
+| Cold restart | 39 checks retained native metadata and serialized references after closing and reopening Unity. |
+| 200-file lifecycle | 606 checks through Full → Lightweight → Full → Lightweight, plus 401 cold-restart checks. All 200 events and controller/array references retained. This uses a small generated Generic fixture, separately from the character-size benchmark. |
+| Existing behavior | The 166 compression/Idle, 135 Combined and 49 Separate Unity checks passed on the changed importer. The upgrade test starts with old settings YAML, native Keyframe Reduction and non-looping Idle clips; the documented new defaults apply while events, identities and other native settings survive. |
+| Source-file sizes | 200 actual generated character NLA exports per mode: 1,575,238,864 → 801,642,656 FBX bytes. Every pair's canonical animation and rig/bind records matched. [Measurements and method](BENCHMARKS.md). |
+| Full-prefab preview | Unity's built-in animation preview and the optional event editor rendered the full 157,410-vertex Valencia prefab with the Lightweight smoking clip and sampled facial weights. Real pan/orbit/zoom events passed. The explicit model choice survived a real source domain reload. |
+| Actual game | Full and Lightweight each played all nine clips through the live controller. Beer/packet/cigarette/lighter, flame/smoke, facial movement, lid/lever motion and unchanged character facing passed. More than 2,300 game frames advanced in each run. Production character assets and all 350 save files were unchanged; dirty authored scenes were preserved with separate maintenance backups. |
+| Main project installation | Lightweight sources installed after the earlier compression upgrade: one batch, no compile errors, zero native FBX/blend imports. Existing 18 clips/32 events and settings stayed intact. A 0.3 compression/Idle upgrade with differing settings does reimport its managed files, as documented. |
+
+These are desktop Editor checks, not a player build, headset measurement or artist acceptance test. Preview decoration/material behavior remains that of the project's existing full prefab and renderer. Lightweight FBXs retain small carriers; use the full character prefab to render/preview. No claim that references to removed embedded render geometry will survive.
+
+Claude Opus 5.5 independently reviewed the design, implementation and edge cases. Publication was authorized; no artist test result is recorded. Product code was unchanged after implementation review; subsequent work adds upgrade/timing evidence and clarifies this guide.
+
+Lightweight uses Blender's internal FBX parse/encode modules with attribute/signature guards. Native testing covers Blender 5.0.1 and 5.2.1; other versions are unverified.
+
+Lightweight-specific combinations not separately verified: mixed-mode Unity folders, shortened events while sibling Lightweight files update, missing-Avatar setup; nondefault FBX scale/leaf-bone options, constraints/drivers, geometric pivots, remove/relink/restore, Unicode clip filenames, real locks/ownership drift, and modal Undo/load cancellation. General Separate/Combined tests cover some underlying behavior, but do not establish those Lightweight combinations.
+
+## Earlier 0.3.0 verification
 
 Tested on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1.
 

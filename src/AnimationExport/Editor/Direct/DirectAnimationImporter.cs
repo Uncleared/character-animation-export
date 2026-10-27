@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -159,7 +160,22 @@ namespace CharacterAnimationExport.Direct
         static readonly Dictionary<string, int> attempts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         static readonly HashSet<string> setupNotified = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static bool scheduled;
+        static readonly Regex nameWords = new Regex(@"[^\p{L}]+|(?<=\p{Ll})(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})");
         public static int ReconcileCount { get; private set; }
+
+        static bool IsIdleName(string name) => !string.IsNullOrEmpty(name) &&
+            nameWords.Split(name).Any(word => string.Equals(word, "Idle", StringComparison.OrdinalIgnoreCase));
+
+        static void ConfigureCompression(ModelImporter importer, AnimationImportSettings settings)
+        {
+            if (!settings.setCompression) return;
+            var mode = settings.CompressionMode();
+            if (importer.animationCompression != mode) importer.animationCompression = mode;
+            if (mode == ModelImporterAnimationCompression.Off) return;
+            if (importer.animationRotationError != settings.rotationError) importer.animationRotationError = settings.rotationError;
+            if (importer.animationPositionError != settings.positionError) importer.animationPositionError = settings.positionError;
+            if (importer.animationScaleError != settings.scaleError) importer.animationScaleError = settings.scaleError;
+        }
 
         // Deliberately no model preprocess callbacks: installing/changing those
         // invalidates the import cache for every model in a large project.
@@ -380,6 +396,11 @@ namespace CharacterAnimationExport.Direct
                 return false;
             }
             setupNotified.Remove(source.SettingsPath);
+            if (settings.setCompression && settings.CompressionMode() != ModelImporterAnimationCompression.Off)
+            {
+                settings.ValidateCompressionErrors();
+                if (settings.NormalizeCompressionErrors()) EditorUtility.SetDirty(settings);
+            }
             if (EditorUtility.IsDirty(settings)) AssetDatabase.SaveAssetIfDirty(settings);
             var state = ReadState(importer.userData);
             if ((!string.IsNullOrEmpty(state.profileId) && state.profileId != source.profile.profileId) ||
@@ -468,6 +489,8 @@ namespace CharacterAnimationExport.Direct
                 definition.takeName = native.takeName;
                 definition.firstFrame = native.firstFrame; definition.lastFrame = lastFrame;
                 definition.events = events.Select(item => CloneEvent(item, factor)).ToArray();
+                if (change != null && change.overrideLoop) definition.loopTime = change.loopTime;
+                else if (settings.loopIdleClips && IsIdleName(definition.name)) definition.loopTime = true;
                 definition.lockRootRotation = change != null && change.overrideRoot ? change.bakeRotation : settings.bakeRotation;
                 definition.lockRootHeightY = change != null && change.overrideRoot ? change.bakeY : settings.bakeY;
                 definition.lockRootPositionXZ = change != null && change.overrideRoot ? change.bakeXZ : settings.bakeXZ;
@@ -486,7 +509,9 @@ namespace CharacterAnimationExport.Direct
             if (removed.Length > 0)
                 warnings.Add("Removed " + removed.Length + " confirmed clips. Previous native event/import data was backed up: " + BackupEvents(path, source.outputId));
             ConfigureRig(importer, settings);
-            if (importer.animationType == ModelImporterAnimationType.Generic && string.IsNullOrWhiteSpace(settings.motionNode))
+            ConfigureCompression(importer, settings);
+            if (importer.animationType == ModelImporterAnimationType.Generic && string.IsNullOrWhiteSpace(settings.motionNode) &&
+                (string.IsNullOrEmpty(importer.motionNodeName) || model.transform.Find(importer.motionNodeName) == null))
             {
                 var roots = model.GetComponentsInChildren<SkinnedMeshRenderer>(true).Select(item => item.rootBone).Where(item => item != null && item != model.transform).Distinct().ToArray();
                 if (roots.Length == 1) importer.motionNodeName = AnimationUtility.CalculateTransformPath(roots[0], model.transform);

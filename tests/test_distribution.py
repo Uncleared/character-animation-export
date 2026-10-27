@@ -32,12 +32,15 @@ class DistributionTests(unittest.TestCase):
             self.assertIsNone(archive.testzip())
             self.assertTrue(all(item.create_system == 3 for item in archive.infolist()))
             self.assertEqual(set(archive.namelist()), {
-                "character_animation_export/__init__.py", "character_animation_export/core.py", "character_animation_export/combined.py"})
+                "character_animation_export/__init__.py", "character_animation_export/core.py", "character_animation_export/combined.py",
+                "character_animation_export/lightweight.py"})
             for name in archive.namelist():
                 self.assertEqual(archive.read(name), (packaging.SOURCE / "Blender~" / name).read_bytes())
         with zipfile.ZipFile(io.BytesIO(first[f"CharacterAnimationExport-Prototype-{release}.zip"])) as archive:
             self.assertIn("ExampleCharacter.blend", archive.namelist())
             self.assertIn("README.md", archive.namelist())
+            for data in (ROOT / "docs" / "benchmarks").glob("*.csv"):
+                self.assertEqual(archive.read(data.relative_to(ROOT).as_posix()), data.read_bytes())
             for image in (ROOT / "docs" / "images").glob("*.png"):
                 relative = image.relative_to(ROOT).as_posix()
                 self.assertIn(relative, archive.namelist())

@@ -1,6 +1,6 @@
 # Optional event editor
 
-Install **AnimationEventEditor-0.3.0.unitypackage**, then open **Tools → Animation Event Editor**. Choose a `.anim` or an imported FBX clip, edit events and press **Save**. It works without the exporter or its support data. Unity’s native event tools remain available.
+Install **AnimationEventEditor-0.4.0.unitypackage**, then open **Tools → Animation Event Editor**. Choose a `.anim` or an imported FBX clip, edit events and press **Save**. It works without the exporter or its support data. Unity’s native event tools remain available.
 
 ![Independent event editor](images/unity-animation-events.png)
 
@@ -14,3 +14,5 @@ Install **AnimationEventEditor-0.3.0.unitypackage**, then open **Tools → Anima
 | More preview space | Drag the divider |
 
 Use frame stepping, frame number, speed and looping to place cues. Previewing does not fire events. Save and Discard are explicit; a stale draft cannot overwrite newer native edits.
+
+Drag the full character prefab into **Preview Model**, especially for Lightweight animation FBXs. Your choice stays selected when changing clips, discarding a draft or reloading the window.

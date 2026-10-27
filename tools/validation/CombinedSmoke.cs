@@ -40,6 +40,7 @@ public static class CombinedSmoke
         {
             settings = ScriptableObject.CreateInstance<AnimationImportSettings>(); settings.profileId = source.profile.profileId;
             settings.characterName = source.profile.characterName; settings.rig = CharacterRig.Generic;
+            settings.compression = AnimationCompression.Off;
             AssetDatabase.CreateAsset(settings, source.SettingsPath); AssetDatabase.SaveAssetIfDirty(settings);
         }
         DirectAnimationImporter.QueueFolder(folder); DirectAnimationImporter.ProcessPending();
@@ -111,7 +112,6 @@ public static class CombinedSmoke
             Copy("Base"); var settings = Configure(Root);
             var source = DirectAnimationMetadata.Sources(Root).Single(); var path = source.assetPath;
             var importer = (ModelImporter)AssetImporter.GetAtPath(path);
-            importer.animationCompression = ModelImporterAnimationCompression.Off; importer.SaveAndReimport();
             var clips = Clips(path);
             Check(clips.Length == 2 && source.combined, "one FBX imports two friendly clips");
             var names = source.clips.Select(item => item.name).ToArray();
@@ -129,7 +129,7 @@ public static class CombinedSmoke
             Configure(separateRoot);
             var references = new Dictionary<string,AnimationClip>();
             foreach (var row in DirectAnimationMetadata.Sources(separateRoot))
-            { var separateImporter=(ModelImporter)AssetImporter.GetAtPath(row.assetPath);separateImporter.animationCompression=ModelImporterAnimationCompression.Off;separateImporter.SaveAndReimport();var clip=Clips(row.assetPath).Single();references.Add(clip.name,clip); }
+            { var clip=Clips(row.assetPath).Single();references.Add(clip.name,clip); }
             foreach (var clip in clips) Compare(references[clip.name],clip,"combined versus separate "+clip.name);
             var payload= new AvatarMask();AssetDatabase.CreateAsset(payload,Root+"/Payload.mask");
             var definitions=importer.clipAnimations;

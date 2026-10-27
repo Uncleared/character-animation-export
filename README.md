@@ -6,12 +6,12 @@ Export Blender character animations into Unity, including facial and animated pr
 
 ## Install
 
-Download and extract **CharacterAnimationExport-Prototype-0.3.0.zip** from [Releases](https://github.com/Uncleared/character-animation-export/releases).
+Download and extract the [**0.4.0 bundle**](https://github.com/Uncleared/character-animation-export/releases/download/v0.4.0/CharacterAnimationExport-Prototype-0.4.0.zip).
 
-- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.3.0.zip** and enable it.
-- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.3.0.unitypackage**.
+- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.4.0.zip** and enable it.
+- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.4.0.unitypackage**.
 
-**Update both packages together.** Blender 5.0 and 5.2 are supported for combined export.
+**Update both packages together.** Combined and Lightweight are supported on Blender 5.0 and 5.2.
 
 ## Export one combined FBX
 
@@ -27,7 +27,17 @@ Unchecking or removing a clip asks once before removing it from the combined FBX
 
 To use an alternate take **without changing a published clip’s identity**, uncheck the alternate, open **Settings**, and use the original clip’s **link button → Replace Source**. Renaming a source strip also keeps its published identity.
 
-**Separate FBXs:** choose this option to export one file per checked clip. Unchecking leaves its existing file in place. Changing layout, Folder or File Name creates separate outputs; update game references when switching.
+Changing layout or File Name creates separate outputs; update game references when switching.
+
+## Smaller separate FBXs
+
+Choose **Separate FBXs → Lightweight → Export**. To convert existing separate exports, keep the same **Folder**. Events and clip references stay attached. Uncheck **Lightweight** and export to restore full geometry.
+
+Lightweight keeps body, facial and prop animation with small mesh carriers. **Use the full character prefab for rendering and preview**; drag it into Unity’s preview or the event editor’s **Preview Model**. Keep display-model assets separate from animation exports.
+
+Only checked clips update. Unchecked files stay as they are; a brief hint identifies remaining Full or Lightweight files. Combined export still includes geometry once.
+
+Measured on 200 generated character clips: **1.58 GB → 0.80 GB (49.1% smaller)**. [Size comparison](docs/BENCHMARKS.md).
 
 ## Unity setup, once per character
 
@@ -35,11 +45,17 @@ Select the export folder → **Assets → Animation Import Settings**. Choose **
 
 Future exports import automatically with **Bake Rotation/Y/XZ**, **full prop masks**, **Original Facing** and **Original XZ Origin** enabled by default. Native custom masks and per-clip overrides are preserved. Use the imported clips in your existing animation system.
 
+**Animation Import Settings** also defaults to **Optimal** compression with **0.01 Rotation Error**, **0.01 Position Error** and **0.5 Scale Error**. **Loop Idle Clips** enables Loop Time for Idle names, ignoring case (including `StandingIdle` and `Idle.001`). Use **Clip Overrides → Override Loop / Loop Time** for exceptions such as a one-shot `IdleToSit`. Turning either automation off keeps its current values and allows native Unity editing. Loop Pose stays as authored.
+
+Compression uses Unity's native compressor and can change interpolation between baked frames. Choose **Off** when you need uncompressed curves.
+
+**Upgrading from 0.3:** existing folders also receive these compression and Idle-loop defaults on installation. Differing settings cause a reimport and replace native compression/Idle-loop choices. Disable **Set Compression** or **Loop Idle Clips** before making native edits you want to keep.
+
 ## Events
 
 Continue using Unity’s native **FBX → Animations → Events**. Updates preserve event seconds and payloads. Shortening past an event warns and retains its previous data for correction. Moving a whole strip does not shift its local event times; retiming the gesture itself may require reviewing its cues.
 
-The optional **AnimationEventEditor-0.3.0.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping. [Preview controls](docs/EVENTS.md).
+The optional **AnimationEventEditor-0.4.0.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping, and remembers your chosen prefab when switching clips. [Preview controls](docs/EVENTS.md).
 
 ## When experimenting
 

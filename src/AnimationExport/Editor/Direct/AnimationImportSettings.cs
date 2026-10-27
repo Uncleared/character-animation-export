@@ -10,6 +10,7 @@ using UnityEngine;
 namespace CharacterAnimationExport.Direct
 {
     public enum CharacterRig { [InspectorName("Choose Rig")] Unset = -1, Generic = 0, Humanoid = 1 }
+    public enum AnimationCompression { Off = 0, KeyframeReduction = 1, Optimal = 3 }
 
     [Serializable]
     public sealed class ClipImportOverride
@@ -20,6 +21,9 @@ namespace CharacterAnimationExport.Direct
         public bool originalOrientation = true, originalPositionXZ = true;
         public bool overrideMask;
         public AvatarMask mask;
+        [Tooltip("Use this clip's Loop Time instead of the automatic Idle rule.")]
+        public bool overrideLoop;
+        public bool loopTime;
     }
 
     public sealed class AnimationImportSettings : ScriptableObject
@@ -28,6 +32,14 @@ namespace CharacterAnimationExport.Direct
         public CharacterRig rig = CharacterRig.Unset;
         public Avatar sourceAvatar;
         public string motionNode;
+        [Tooltip("Apply these compression settings to this character's exported FBXs. Disable to edit compression in Unity's native importer.")]
+        public bool setCompression = true;
+        public AnimationCompression compression = AnimationCompression.Optimal;
+        [Delayed] public float rotationError = 0.01f;
+        [Delayed] public float positionError = 0.01f;
+        [Delayed] public float scaleError = 0.5f;
+        [Tooltip("Enable Loop Time for Idle names, ignoring case. Use Clip Overrides for a non-looping exception. Disabling this leaves current loop values unchanged.")]
+        public bool loopIdleClips = true;
         public bool bakeRotation = true, bakeY = true, bakeXZ = true, includeAllTransforms = true;
         [Tooltip("Use the authored facing instead of calculating a different body-facing reference for each clip.")]
         public bool originalOrientation = true;
@@ -37,8 +49,35 @@ namespace CharacterAnimationExport.Direct
 
         void OnValidate()
         {
+            NormalizeCompressionErrors();
             var path = AssetDatabase.GetAssetPath(this);
             if (!string.IsNullOrEmpty(path)) DirectAnimationImporter.QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(path)).Replace('\\', '/'));
+        }
+
+        internal bool NormalizeCompressionErrors()
+        {
+            var previous = new Vector3(rotationError, positionError, scaleError);
+            if (!float.IsNaN(rotationError) && !float.IsInfinity(rotationError)) rotationError = Mathf.Clamp(rotationError, 0, 100);
+            if (!float.IsNaN(positionError) && !float.IsInfinity(positionError)) positionError = Mathf.Clamp(positionError, 0, 100);
+            if (!float.IsNaN(scaleError) && !float.IsInfinity(scaleError)) scaleError = Mathf.Clamp(scaleError, 0, 100);
+            return previous.x != rotationError || previous.y != positionError || previous.z != scaleError;
+        }
+
+        internal ModelImporterAnimationCompression CompressionMode()
+        {
+            switch (compression)
+            {
+                case AnimationCompression.Off: return ModelImporterAnimationCompression.Off;
+                case AnimationCompression.KeyframeReduction: return ModelImporterAnimationCompression.KeyframeReduction;
+                case AnimationCompression.Optimal: return ModelImporterAnimationCompression.Optimal;
+                default: throw new InvalidOperationException("Choose Off, Keyframe Reduction or Optimal in Animation Import Settings.");
+            }
+        }
+
+        internal void ValidateCompressionErrors()
+        {
+            if (new[] { rotationError, positionError, scaleError }.Any(value => float.IsNaN(value) || float.IsInfinity(value)))
+                throw new InvalidOperationException("Animation compression errors must be finite numbers. Correct Rotation, Position and Scale Error in Animation Import Settings.");
         }
     }
 

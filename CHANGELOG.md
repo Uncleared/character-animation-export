@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — Lightweight separate FBXs
+
+- Add a Separate-only Lightweight checkbox that updates existing files in place and can restore Full geometry with the same identities.
+- Retain animation curves, prop hierarchies, facial carriers and original skin/bind relationships; validate staged FBXs before publication.
+- Preserve valid Generic motion roots and explicitly selected event-preview prefabs across clip/window reloads.
+- Identify mixed Full/Lightweight folders without rewriting unchecked files.
+- Add folder compression defaults: Optimal, rotation error 0.01, position error 0.01 and scale error 0.5, with native opt-out.
+- Enable Loop Time for Idle names, with per-clip exceptions.
+- Add native export, migration, animation-parity and measured-size checks.
+- Upgrade note: existing managed folders receive the new compression and Idle-loop defaults on installation; differing native settings are replaced and cause a reimport. Disable the corresponding automation to keep subsequent native edits.
+
 ## 0.3.0 — Combined FBX
 
 - Export checked clips into one combined FBX with face and prop animation, geometry once, and automatic NLA ranges including fractional boundaries.
