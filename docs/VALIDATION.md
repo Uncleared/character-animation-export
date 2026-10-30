@@ -1,3 +1,14 @@
+# Verification for 0.4.1
+
+Unity importer code is byte-identical to the human-accepted, independently Opus-reviewed fix installed and tested in PROJECT MIX V2, apart from Git line endings. Tested with Unity 6000.1.7f1.
+
+- 220 native fixture assertions passed, including 166 import-preservation checks, Inspector/Undo, unrelated prefab/scene saves, settings validation, metadata/Avatar updates and production-assembly checks. Cold-start missing-Avatar restoration also passed.
+- Installed project startup checked 96 FBXs with zero reimports. Unrelated callbacks/unchanged validation added zero checks and settings loads. Startup/domain-reload catch-up remains enabled.
+- Installed source compiled without C# errors and produced no new scoped importer errors. The strict whole-project Console check remained failed on existing IngredientDropper duplicate-field errors and a CLI compatibility message; this is not a clean whole-project Console claim.
+- Collaborator testing is arranged by the user and remains pending. No fresh Blender export round trip was performed for this importer-only fix; exporter behavior and earlier size measurements are unchanged.
+
+Publication checks rebuild the downloads, test packaging and import the actual Unity package in a fresh disposable project. No production project refresh or reimport is needed to package/publish this patch.
+
 # Verification for 0.4.0
 
 Tested on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1.

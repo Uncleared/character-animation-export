@@ -159,7 +159,35 @@ namespace CharacterAnimationExport.Direct
         static readonly Dictionary<string, string> failed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<string, int> attempts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         static readonly HashSet<string> setupNotified = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        static bool scheduled;
+        static readonly HashSet<string> pendingFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        static readonly HashSet<string> pendingSettings = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Paths are refreshed only for changed settings and their source Avatars.
+        // Unrelated imports must never load every settings asset (and validate it).
+        static readonly Dictionary<string, string> settingsAvatars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Missing references can be restored at another path or after a reload.
+        // Only those entries need a changed-path GUID lookup; normal imports use paths.
+        static readonly Dictionary<string, string> missingAvatarGuids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<string, string> settingsSnapshots = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        static bool scheduled, processing, discoveryScheduled, discovered;
+        public static int ReconcileCheckCount { get; private set; }
+        public static int SettingsIndexRefreshCount { get; private set; }
+        public static int DiscoveryCount { get; private set; }
+        const string DiagnosticsPreference = "CharacterAnimationExport.Direct.Diagnostics";
+
+        [MenuItem("Tools/Character Animation Import Diagnostics")]
+        static void ToggleDiagnostics() => EditorPrefs.SetBool(DiagnosticsPreference, !EditorPrefs.GetBool(DiagnosticsPreference));
+
+        [MenuItem("Tools/Character Animation Import Diagnostics", true)]
+        static bool ValidateDiagnostics()
+        {
+            Menu.SetChecked("Tools/Character Animation Import Diagnostics", EditorPrefs.GetBool(DiagnosticsPreference));
+            return true;
+        }
+
+        static void TraceQueue(string reason, string path)
+        {
+            if (EditorPrefs.GetBool(DiagnosticsPreference)) Debug.Log("Animation import queued (" + reason + "): " + path);
+        }
         static readonly Regex nameWords = new Regex(@"[^\p{L}]+|(?<=\p{Ll})(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})");
         public static int ReconcileCount { get; private set; }
 
@@ -194,75 +222,199 @@ namespace CharacterAnimationExport.Direct
             if (settings != null && !string.IsNullOrWhiteSpace(settings.motionNode) && importer.motionNodeName != settings.motionNode) importer.motionNodeName = settings.motionNode;
         }
 
+        static string ExportFolder(string settingsOrMetadataPath) =>
+            Path.GetDirectoryName(Path.GetDirectoryName(settingsOrMetadataPath)).Replace('\\', '/');
+
         static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom, bool didDomainReload)
         {
             foreach (var path in imported.Concat(moved))
             {
-                if (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) Queue(path);
-                else if (IsMetadata(path)) QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(path)).Replace('\\', '/'));
+                if (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) Queue(path, "FBX imported");
+                else if (IsMetadata(path))
+                {
+                    if (IsSettings(path)) pendingSettings.Add(path);
+                    QueueFolder(ExportFolder(path), "Export metadata/settings changed");
+                }
             }
             foreach (var path in deleted.Concat(movedFrom))
-                if (IsMetadata(path)) QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(path)).Replace('\\', '/'));
+                if (IsMetadata(path))
+                {
+                    if (IsSettings(path)) { settingsAvatars.Remove(path); missingAvatarGuids.Remove(path); settingsSnapshots.Remove(path); pendingSettings.Remove(path); }
+                    QueueFolder(ExportFolder(path), "Export metadata/settings removed or moved");
+                }
             var changed = new HashSet<string>(imported.Concat(moved).Concat(deleted).Concat(movedFrom), StringComparer.OrdinalIgnoreCase);
-            foreach (var guid in AssetDatabase.FindAssets("t:AnimationImportSettings"))
-            {
-                var settingsPath = AssetDatabase.GUIDToAssetPath(guid);
-                var settings = AssetDatabase.LoadAssetAtPath<AnimationImportSettings>(settingsPath);
-                if (settings != null && settings.sourceAvatar != null && changed.Contains(AssetDatabase.GetAssetPath(settings.sourceAvatar)))
-                    QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(settingsPath)).Replace('\\', '/'));
-            }
+            // This is a small in-memory index, not a FindAssets/LoadAssetAtPath scan.
+            var restoredGuids = missingAvatarGuids.Count == 0 ? null : new HashSet<string>(
+                imported.Concat(moved).Select(path => AssetDatabase.AssetPathToGUID(path)), StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in settingsAvatars)
+                if ((!string.IsNullOrEmpty(pair.Value) && changed.Contains(pair.Value)) ||
+                    (restoredGuids != null && missingAvatarGuids.TryGetValue(pair.Key, out var guid) && restoredGuids.Contains(guid)))
+                {
+                    pendingSettings.Add(pair.Key);
+                    QueueFolder(ExportFolder(pair.Key), "Source Avatar changed");
+                }
             if (didDomainReload) ScheduleDiscovery();
         }
 
         static bool IsMetadata(string path) => path.Contains("/AnimationExportData/") &&
-            (path.EndsWith(".animation-export.json", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".settings.asset", StringComparison.OrdinalIgnoreCase));
+            (path.EndsWith(".animation-export.json", StringComparison.OrdinalIgnoreCase) || IsSettings(path));
+
+        static bool IsSettings(string path) => path.EndsWith(".settings.asset", StringComparison.OrdinalIgnoreCase);
+
+        static void RefreshSettingsIndex(string path)
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<AnimationImportSettings>(path);
+            SettingsIndexRefreshCount++;
+            if (settings == null) { settingsAvatars.Remove(path); missingAvatarGuids.Remove(path); settingsSnapshots.Remove(path); return; }
+            var avatarPath = settings.sourceAvatar == null ? "" : AssetDatabase.GetAssetPath(settings.sourceAvatar);
+            missingAvatarGuids.Remove(path);
+            if (string.IsNullOrEmpty(avatarPath))
+            {
+                // A missing persistent reference is not an explicit clear. Its
+                // GUID remains available even when no earlier path was cached.
+                using (var serialized = new SerializedObject(settings))
+                {
+                    var instanceId = serialized.FindProperty("sourceAvatar").objectReferenceInstanceIDValue;
+                    if (instanceId != 0)
+                    {
+                        if (settingsAvatars.TryGetValue(path, out var previous)) avatarPath = previous;
+                        if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(instanceId, out string guid, out long localId) && !string.IsNullOrEmpty(guid))
+                            missingAvatarGuids[path] = guid;
+                    }
+                }
+            }
+            settingsAvatars[path] = avatarPath;
+            settingsSnapshots[path] = EditorJsonUtility.ToJson(settings);
+        }
+
+        [InitializeOnLoadMethod]
+        static void TrackSettingsEdits()
+        {
+            ObjectChangeEvents.changesPublished -= OnSettingsPropertiesChanged;
+            ObjectChangeEvents.changesPublished += OnSettingsPropertiesChanged;
+        }
+
+        static void OnSettingsPropertiesChanged(ref ObjectChangeEventStream stream)
+        {
+            for (var index = 0; index < stream.length; index++)
+            {
+                if (stream.GetEventType(index) != ObjectChangeKind.ChangeAssetObjectProperties) continue;
+                stream.GetChangeAssetObjectPropertiesEvent(index, out var change);
+                var settings = EditorUtility.InstanceIDToObject(change.instanceId) as AnimationImportSettings;
+                if (settings == null) continue;
+                var path = AssetDatabase.GetAssetPath(settings);
+                if (!IsMetadata(path)) continue;
+                var current = EditorJsonUtility.ToJson(settings);
+                if (settingsSnapshots.TryGetValue(path, out var previous) && previous == current) continue;
+                QueueSettings(settings);
+            }
+        }
 
         [InitializeOnLoadMethod]
         static void ScheduleDiscovery()
         {
+            if (discoveryScheduled || discovered) return;
+            discoveryScheduled = true;
             EditorApplication.delayCall += () =>
             {
+                discoveryScheduled = false;
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating) { ScheduleDiscovery(); return; }
+                discovered = true;
+                DiscoveryCount++;
+                foreach (var guid in AssetDatabase.FindAssets("t:AnimationImportSettings"))
+                {
+                    var settingsPath = AssetDatabase.GUIDToAssetPath(guid);
+                    if (IsMetadata(settingsPath)) pendingSettings.Add(settingsPath);
+                }
                 foreach (var guid in AssetDatabase.FindAssets("glob:\"**/*.animation-export.json\""))
                 {
                     var path = AssetDatabase.GUIDToAssetPath(guid);
-                    if (IsMetadata(path)) QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(path)).Replace('\\', '/'));
+                    if (IsMetadata(path)) QueueFolder(ExportFolder(path), "Startup discovery");
                 }
+                SchedulePending();
             };
         }
 
-        public static void QueueFolder(string folder)
+        static void SchedulePending()
         {
-            try { foreach (var source in DirectAnimationMetadata.Sources(folder)) if (File.Exists(source.assetPath)) Queue(source.assetPath); }
-            catch (Exception error) { Debug.LogError("Animation export: " + error.Message); }
+            if (scheduled || processing || (pending.Count == 0 && pendingFolders.Count == 0 && pendingSettings.Count == 0)) return;
+            scheduled = true;
+            EditorApplication.delayCall += ProcessPending;
         }
 
-        public static void Queue(string path)
+        public static void QueueSettings(AnimationImportSettings settings)
+        {
+            if (settings == null) return;
+            var path = AssetDatabase.GetAssetPath(settings);
+            if (!IsMetadata(path)) return;
+            settingsSnapshots[path] = EditorJsonUtility.ToJson(settings);
+            pendingSettings.Add(path);
+            QueueFolder(ExportFolder(path), "Inspector settings changed");
+        }
+
+        public static void QueueFolder(string folder) => QueueFolder(folder, "Explicit folder request");
+
+        static void QueueFolder(string folder, string reason)
+        {
+            if (string.IsNullOrEmpty(folder)) return;
+            folder = folder.Replace('\\', '/').TrimEnd('/');
+            if (folder != "Assets" && !folder.StartsWith("Assets/", StringComparison.Ordinal)) return;
+            if (pendingFolders.Add(folder)) TraceQueue(reason, folder);
+            SchedulePending();
+        }
+
+        public static void Queue(string path) => Queue(path, "Explicit FBX request");
+
+        static void Queue(string path, string reason)
         {
             if (!path.StartsWith("Assets/", StringComparison.Ordinal) || !path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) return;
             if (!Directory.Exists(Path.GetDirectoryName(path) + "/AnimationExportData")) return;
-            pending.Add(path);
-            if (!scheduled) { scheduled = true; EditorApplication.delayCall += ProcessPending; }
+            if (pending.Add(path)) TraceQueue(reason, path);
+            SchedulePending();
         }
 
         public static void ProcessPending()
         {
+            if (processing) return;
             scheduled = false;
             if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
+            { SchedulePending(); return; }
+            processing = true;
+            try
             {
-                if (pending.Count > 0) { scheduled = true; EditorApplication.delayCall += ProcessPending; }
-                return;
-            }
-            var paths = pending.ToArray();
-            pending.Clear();
-            foreach (var path in paths)
-            {
-                try { Reconcile(path); failed.Remove(path); }
-                catch (Exception error)
+                var folders = pendingFolders.ToArray(); pendingFolders.Clear();
+                foreach (var folder in folders)
                 {
-                    if (!failed.TryGetValue(path, out var previous) || previous != error.Message)
-                    { Debug.LogError("Animation export - " + path + ": " + error.Message); failed[path] = error.Message; }
+                    try
+                    {
+                        foreach (var source in DirectAnimationMetadata.Sources(folder))
+                        {
+                            pendingSettings.Add(source.SettingsPath);
+                            if (File.Exists(source.assetPath)) Queue(source.assetPath, "Changed export folder");
+                        }
+                    }
+                    catch (Exception error) { Debug.LogError("Animation export: " + error.Message); }
+                }
+                var settingsPaths = pendingSettings.ToArray(); pendingSettings.Clear();
+                foreach (var path in settingsPaths) RefreshSettingsIndex(path);
+                var paths = pending.ToArray(); pending.Clear();
+                foreach (var path in paths)
+                {
+                    var timer = EditorPrefs.GetBool(DiagnosticsPreference) ? System.Diagnostics.Stopwatch.StartNew() : null;
+                    try
+                    {
+                        ReconcileCheckCount++;
+                        var reimported = Reconcile(path); failed.Remove(path);
+                        if (timer != null) Debug.Log("Animation import checked: " + path + " (" + timer.ElapsedMilliseconds + " ms, reimport=" + reimported + ")");
+                    }
+                    catch (Exception error)
+                    {
+                        if (!failed.TryGetValue(path, out var previous) || previous != error.Message)
+                        { Debug.LogError("Animation export - " + path + ": " + error.Message); failed[path] = error.Message; }
+                    }
                 }
             }
+            finally { processing = false; SchedulePending(); }
         }
 
         static AppliedState ReadState(string userData)

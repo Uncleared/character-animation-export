@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 — Quieter Unity importing
+
+- Stop unrelated prefab/scene saves and unchanged settings validation from scanning all settings or checking animation FBXs.
+- Keep genuine settings/Undo, FBX, metadata and source-Avatar updates automatic; retain one conservative startup/domain-reload catch-up.
+- Defer and deduplicate import queues; retain missing-Avatar restoration across restarts.
+- Add optional diagnostics, off by default. Existing Queue/QueueFolder callers now enqueue deferred work; custom settings editors can call QueueSettings.
+- Blender export behavior, event editor, native events/masks and import defaults are unchanged. Existing 0.4.0 users need only the Unity importer package; no animation re-export.
+
 ## 0.4.0 — Lightweight separate FBXs
 
 - Add a Separate-only Lightweight checkbox that updates existing files in place and can restore Full geometry with the same identities.

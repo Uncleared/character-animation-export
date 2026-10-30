@@ -1,6 +1,6 @@
 # Optional event editor
 
-Install **AnimationEventEditor-0.4.0.unitypackage**, then open **Tools → Animation Event Editor**. Choose a `.anim` or an imported FBX clip, edit events and press **Save**. It works without the exporter or its support data. Unity’s native event tools remain available.
+Install **AnimationEventEditor-0.4.1.unitypackage**, then open **Tools → Animation Event Editor**. Choose a `.anim` or an imported FBX clip, edit events and press **Save**. It works without the exporter or its support data. Unity’s native event tools remain available.
 
 ![Independent event editor](images/unity-animation-events.png)
 

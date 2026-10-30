@@ -15,6 +15,15 @@ namespace CharacterAnimationExport.Direct
         {
             var settings = (AnimationImportSettings)target;
             var root = new VisualElement();
+            var previousSettings = EditorJsonUtility.ToJson(settings);
+            root.TrackSerializedObjectValue(serializedObject, _ =>
+            {
+                if (settings == null) return;
+                var currentSettings = EditorJsonUtility.ToJson(settings);
+                if (currentSettings == previousSettings) return;
+                previousSettings = currentSettings;
+                DirectAnimationImporter.QueueSettings(settings);
+            });
             root.Add(new Label(settings.characterName + " — Animation Import"));
             root.Add(new PropertyField(serializedObject.FindProperty("rig"), "Rig"));
             root.Add(new PropertyField(serializedObject.FindProperty("sourceAvatar"), "Source Avatar"));

@@ -50,8 +50,8 @@ namespace CharacterAnimationExport.Direct
         void OnValidate()
         {
             NormalizeCompressionErrors();
-            var path = AssetDatabase.GetAssetPath(this);
-            if (!string.IsNullOrEmpty(path)) DirectAnimationImporter.QueueFolder(Path.GetDirectoryName(Path.GetDirectoryName(path)).Replace('\\', '/'));
+            // Loading/validation is not a settings edit. Saved settings imports
+            // and the custom Inspector's actual change callback queue the work.
         }
 
         internal bool NormalizeCompressionErrors()

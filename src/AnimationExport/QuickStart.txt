@@ -1,4 +1,4 @@
-Character Animation Export 0.4.0
+Character Animation Export 0.4.1
 
 BLENDER
 Install the inner Blender ZIP and enable the add-on.
@@ -15,7 +15,8 @@ Uncheck Lightweight and Export to restore full geometry. Only checked clips upda
 Render and preview with the full character prefab, not the small animation carriers.
 
 UNITY: ONCE PER CHARACTER
-Install CharacterAnimationExport-Unity-0.4.0.unitypackage.
+Install CharacterAnimationExport-Unity-0.4.1.unitypackage.
+Updating from 0.4.0: only this Unity package is needed; no re-export.
 Select the export folder > Assets > Animation Import Settings.
 Choose Generic, or Humanoid with the matching Source Avatar.
 Bake Rotation/Y/XZ, full prop mask, original facing and XZ origin default ON.

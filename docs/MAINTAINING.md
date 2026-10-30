@@ -60,6 +60,8 @@ After motion/import changes, check a representative copied-Avatar Humanoid and n
 
 Do not add model preprocess callbacks or GetVersion casually: they can invalidate all FBX caches even with a path filter. Keep configuration scoped to owned metadata, compare settings before SaveAndReimport, and require convergence. Stage complete source changes and validate them in a small project before installing into a large game. Do not refresh/reimport a whole project just to test packaging or documentation.
 
+Custom Editor integrations: `DirectAnimationImporter.Queue` and `QueueFolder` enqueue deferred work rather than reconciling synchronously. Call `QueueSettings(settings)` after real custom serialized settings edits. Let Editor delay calls settle before testing automatic callback behavior; `Reconcile(path)` remains the synchronous per-FBX core. Optional **Tools > Character Animation Import Diagnostics** is off by default.
+
 ## Publish
 
 1. Update VERSION, add-on bl_info/version, CHANGELOG and README download examples.

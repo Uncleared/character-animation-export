@@ -6,12 +6,16 @@ Export Blender character animations into Unity, including facial and animated pr
 
 ## Install
 
-Download and extract the [**0.4.0 bundle**](https://github.com/Uncleared/character-animation-export/releases/download/v0.4.0/CharacterAnimationExport-Prototype-0.4.0.zip).
+Download and extract the [**0.4.1 bundle**](https://github.com/Uncleared/character-animation-export/releases/download/v0.4.1/CharacterAnimationExport-Prototype-0.4.1.zip).
 
-- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.4.0.zip** and enable it.
-- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.4.0.unitypackage**.
+- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.4.1.zip** and enable it.
+- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.4.1.unitypackage**.
 
-**Update both packages together.** Combined and Lightweight are supported on Blender 5.0 and 5.2.
+**Already on 0.4.0?** Only update the Unity importer for this fix. No re-export is needed.
+
+**Upgrading from 0.3 or older? Update both packages together.** Combined and Lightweight are supported on Blender 5.0 and 5.2.
+
+0.4.1 fixes repeated animation processing after unrelated prefab/scene saves. A startup check after opening Unity or recompiling scripts is still normal.
 
 ## Export one combined FBX
 
@@ -55,7 +59,7 @@ Compression uses Unity's native compressor and can change interpolation between 
 
 Continue using Unity’s native **FBX → Animations → Events**. Updates preserve event seconds and payloads. Shortening past an event warns and retains its previous data for correction. Moving a whole strip does not shift its local event times; retiming the gesture itself may require reviewing its cues.
 
-The optional **AnimationEventEditor-0.4.0.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping, and remembers your chosen prefab when switching clips. [Preview controls](docs/EVENTS.md).
+The optional **AnimationEventEditor-0.4.1.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping, and remembers your chosen prefab when switching clips. [Preview controls](docs/EVENTS.md).
 
 ## When experimenting
 
