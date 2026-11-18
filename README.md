@@ -6,16 +6,16 @@ Export Blender character animations into Unity, including facial and animated pr
 
 ## Install
 
-Download and extract the [**0.4.1 bundle**](https://github.com/Uncleared/character-animation-export/releases/download/v0.4.1/CharacterAnimationExport-Prototype-0.4.1.zip).
+Download and extract the [**0.4.2 bundle**](https://github.com/Uncleared/character-animation-export/releases/download/v0.4.2/CharacterAnimationExport-Prototype-0.4.2.zip).
 
-- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.4.1.zip** and enable it.
-- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.4.1.unitypackage**.
+- **Blender:** Preferences → Add-ons → Install from Disk. Install the inner **CharacterAnimationExport-0.4.2.zip** and enable it.
+- **Unity:** Assets → Import Package → Custom Package. Install **CharacterAnimationExport-Unity-0.4.2.unitypackage**.
 
-**Already on 0.4.0?** Only update the Unity importer for this fix. No re-export is needed.
+**Already on 0.4.1?** Only update the Blender add-on for this fix. The Unity importer is unchanged.
 
 **Upgrading from 0.3 or older? Update both packages together.** Combined and Lightweight are supported on Blender 5.0 and 5.2.
 
-0.4.1 fixes repeated animation processing after unrelated prefab/scene saves. A startup check after opening Unity or recompiling scripts is still normal.
+0.4.2 lets separate clips return to earlier names. 0.4.1 fixed repeated animation processing after unrelated prefab/scene saves; a startup check after opening Unity or recompiling scripts is still normal.
 
 ## Export one combined FBX
 
@@ -32,6 +32,10 @@ Unchecking or removing a clip asks once before removing it from the combined FBX
 To use an alternate take **without changing a published clip’s identity**, uncheck the alternate, open **Settings**, and use the original clip’s **link button → Replace Source**. Renaming a source strip also keeps its published identity.
 
 Changing layout or File Name creates separate outputs; update game references when switching.
+
+## Changing a separate clip's name
+
+A new name creates a new FBX, and the old file stays so existing game references keep working. Going back to one of the clip's earlier names reconnects it to that file automatically. If the name last belonged to a different animation, **Export** asks first, because references and events on that file will apply to the new animation. **Settings → Export Name** shows what will happen before you export.
 
 ## Smaller separate FBXs
 
@@ -59,7 +63,7 @@ Compression uses Unity's native compressor and can change interpolation between 
 
 Continue using Unity’s native **FBX → Animations → Events**. Updates preserve event seconds and payloads. Shortening past an event warns and retains its previous data for correction. Moving a whole strip does not shift its local event times; retiming the gesture itself may require reviewing its cues.
 
-The optional **AnimationEventEditor-0.4.1.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping, and remembers your chosen prefab when switching clips. [Preview controls](docs/EVENTS.md).
+The optional **AnimationEventEditor-0.4.2.unitypackage** provides **Tools → Animation Event Editor**, independently of this exporter. Its preview supports pan, orbit, zoom and frame stepping, and remembers your chosen prefab when switching clips. [Preview controls](docs/EVENTS.md).
 
 ## When experimenting
 

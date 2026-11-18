@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2 — Safer clip renames
+
+- Separate clips can return to an earlier name automatically, keeping that FBX, its Unity identity and its events.
+- Reusing a file left by a different removed animation asks first, and consent covers only the exact file, source and range shown.
+- Names can be exchanged between clips in one export. Files held by another clip, edited outside the exporter or with a changed FBX take name are still refused.
+- Export Name shows the outcome before export. Exporting other clips no longer relabels an unexported rename in the metadata, and existing mislabelled rows are corrected on the next export.
+- Blender add-on only: the Unity importer, event editor and existing FBXs are unchanged.
+
 ## 0.4.1 — Quieter Unity importing
 
 - Stop unrelated prefab/scene saves and unchanged settings validation from scanning all settings or checking animation FBXs.

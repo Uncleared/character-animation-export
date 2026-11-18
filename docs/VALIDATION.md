@@ -1,3 +1,12 @@
+# Verification for 0.4.2
+
+Tested on Windows with Blender 5.0.1, Blender 5.2.1 LTS and Unity 6000.1.7f1. GPT-6.2 Astra (high) reviewed the design against the source before implementation.
+
+- Artist iteration passed 59 checks on each Blender version, including automatic return, cancellation, an edited destination, a changed take name, a stale blend, consent bound to the exact range, operator export, retired holders, name exchange and schema 3 history.
+- Combined, Fractional, Separate, Lightweight export and legacy Blender suites passed on both versions. TestLightweightSafety was not rerun; lightweight code is unchanged.
+- ArtistIterationSmoke passed 37 checks in a disposable Unity project. Across return and reuse, all three FBXs kept GUID, local ID, Animator references and event timing, and repeat reconciliation requested no change.
+- The real metadata that reported this bug classifies as an automatic return. Not tested: the artist's own blend, the interactive dialog by hand, Actions mode with this flow, or in-game playback.
+
 # Verification for 0.4.1
 
 Unity importer code is byte-identical to the human-accepted, independently Opus-reviewed fix installed and tested in PROJECT MIX V2, apart from Git line endings. Tested with Unity 6000.1.7f1.

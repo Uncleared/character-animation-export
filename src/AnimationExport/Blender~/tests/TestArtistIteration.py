@@ -115,6 +115,62 @@ first=profile.clips[0];first.export_name='RenamedDuringSwitch';profile.export_la
 result=export()
 check(all(not row.get('file','').endswith('ExampleAnimations.fbx') for row in result['clips']),'combined-to-separate rename leaves no dangling managed combined rows')
 check((root/'ExampleAnimations.fbx').is_file(),'combined-to-separate rename preserves the previous combined output')
+
+load('NameChanges');profile.export_layout='SEPARATE';addon.refresh(profile)
+first,second=profile.clips[0],profile.clips[1];first_name,second_name=first.export_name,second.export_name;wrong='Wrong Name'
+def published():return json.loads((root/core.metadata_file(profile.profile_id)).read_text(encoding='utf-8'))
+def row(clip_id):
+    rows=[item for item in published()['clips'] if item['id']==clip_id]
+    check(len(rows)==1,'clip id appears once in the published list');return rows[0]
+def reuse_tokens():return {claim['token'] for claim in addon._reuse_plan(profile)}
+def identities():return (first.clip_id,first.published_name,second.clip_id,second.published_name)
+export();fixture('RenameBase');original,second_original=first.clip_id,second.clip_id
+sentinel=root/(first_name+'.fbx.meta');sentinel.write_text('guid: keep\n',encoding='utf-8')
+first.export_name=wrong;export();moved=first.clip_id;fixture('RenameMoved')
+check(moved!=original and row(original)['state']=='removed','a first rename still keeps the old file for existing references')
+first.export_name=first_name;first.enabled=False;export()
+check(row(moved)['name']==wrong and row(moved)['file']==wrong+'.fbx','an unchecked rename does not relabel its published file')
+first.enabled=True;second.enabled=False;before=hashes();state=identities()
+try:export(cancel=lambda _index:True)
+except InterruptedError:pass
+else:raise AssertionError('Expected cancellation')
+check(hashes()==before and identities()==state,'cancelled return keeps files and Blender identity')
+owner_file=root/(first_name+'.fbx');owner_bytes=owner_file.read_bytes();owner_file.write_bytes(owner_bytes+b'x')
+fails(export,'changed outside this exporter');owner_file.write_bytes(owner_bytes)
+check(identities()==state,'an edited destination is refused without changing identity')
+scene_name=scene.name;scene.name='Renamed Scene For Take'
+fails(export,'different FBX take name');scene.name=scene_name
+check(identities()==state and hashes()==before,'a changed take name is refused before publication')
+result=export();fixture('RenameRestored')
+check(first.clip_id==original and first.published_name==first_name,'returning to an earlier name reconnects the original clip automatically')
+check(row(original)['state']=='present' and row(original)['exported'] and row(original)['sha256']==core.digest(owner_file),'restored row owns the replaced file')
+check(row(moved)['state']=='removed' and (root/(wrong+'.fbx')).is_file(),'the abandoned name stays owned by its removed clip')
+check(sentinel.read_text(encoding='utf-8')=='guid: keep\n','restoring keeps the Unity metadata file')
+first.clip_id=moved;first.published_name=wrong;export()
+check(first.clip_id==original and row(moved)['state']=='removed','a stale saved blend reconnects to the restored clip')
+second.enabled=True;first.enabled=False;second.export_name=wrong;before=hashes();state=identities()
+fails(export,'confirm reusing');check(hashes()==before and identities()==state,'unconfirmed reuse changes nothing')
+tokens=reuse_tokens();check(len(tokens)==1,'reuse plan reports the one affected file')
+strip=source(second)['strip'];strip.frame_end_ui-=1;addon.refresh(profile)
+fails(lambda:export(confirm_takeovers=tokens),'confirm reusing');strip.frame_end_ui+=1;addon.refresh(profile)
+check(hashes()==before,'consent does not cover a changed animation range')
+check(bpy.ops.cae.export_checked('EXEC_DEFAULT',confirmed_takeovers=','.join(reuse_tokens()))=={'FINISHED'},'confirmed reuse exports through the operator')
+fixture('RenameReused')
+check(second.clip_id==moved and second.published_name==wrong and row(moved)['sourceBinding']['strip']==second.source_name,'confirmed reuse keeps the file identity with its new source')
+check(row(second_original)['state']=='removed' and row(second_original)['file']==second_name+'.fbx','the reusing clip leaves its old file owned')
+first.enabled=True;first.export_name=wrong;second.retired=True
+fails(export,'belongs to another clip');second.retired=False
+second.export_name=first_name;tokens=reuse_tokens();check(len(tokens)==2,'a same-export swap asks about both files')
+export(confirm_takeovers=tokens)
+check((first.clip_id,second.clip_id)==(moved,original) and len({item['id'] for item in published()['clips']})==len(published()['clips']),'two clips can exchange names without duplicate ids')
+binding=dict(track='T',strip='S',action='A');old=dict(id='a'*32,file='N.fbx',state='removed',sha256='1',sourceBinding=binding);mine=dict(id='b'*32,file='M.fbx',state='present',sha256='2',sourceBinding=binding)
+output=dict(id=old['id'],file='N.fbx',sha256='1',kind='separate')
+check(core.classify_name_claim(dict(schemaVersion=3,clips=[old,mine],outputs=[output]),mine['id'],'N',binding,set(),set())['kind']=='restore','schema 3 separate history can be restored')
+check(core.classify_name_claim(dict(schemaVersion=3,clips=[dict(old,file=''),mine],outputs=[output]),mine['id'],'N',binding,set(),set()) is None,'an output-only reservation is not taken over')
+check(core.classify_name_claim(dict(schemaVersion=3,clips=[old,mine],outputs=[dict(output,kind='combined')]),mine['id'],'N',binding,set(),set()) is None,'a combined output is not taken over')
+check(core.classify_name_claim(dict(schemaVersion=2,clips=[old,dict(mine,sourceBinding=dict(binding,strip='Other'))]),mine['id'],'N',binding,set(),set())['kind']=='reuse','a different published source must ask')
+check(core.classify_name_claim(dict(schemaVersion=2,clips=[old]),'c'*32,'N',binding,set(),set())['kind']=='reuse','a clip with no published history must ask')
+
 load('Recovery');export();fixture('RecoveryBase')
 identity=profile.clips[0].clip_id;profile.clips[0].enabled=False
 export(confirm_removals={identity});fixture('RecoveryRemoved')

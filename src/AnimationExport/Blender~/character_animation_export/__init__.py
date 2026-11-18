@@ -1,4 +1,4 @@
-bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 4, 1),
+bl_info = {"name": "Character Animation Export", "author": "PMIX", "version": (0, 4, 2),
            "blender": (5, 0, 0), "location": "View3D > Sidebar > Animation Export",
            "description": "Export checked character clips with synchronized prop animation", "category": "Import-Export"}
 
@@ -17,6 +17,7 @@ _relink_choices = []
 _track_choices = {}
 _active_export = None
 _geometry_cache = {}
+_publication_cache = {}
 
 
 def _suggested_name(settings):
@@ -290,7 +291,72 @@ def _combined_plan(context, settings):
     return core.removals(previous, settings.combined_name + '.fbx', ids), previous
 
 
-def export_package_steps(context, settings, cancel=None, direct=False, confirm_removals=(), confirmed_publication=None):
+def _binding(record):
+    return dict(track=record.track_name, strip=record.source_name, action=record.action.name if record.action else '')
+
+
+def _is_renamed(record, rows):
+    if record.published_name and record.export_name != record.published_name:
+        return True
+    published_file = rows.get(record.clip_id, {}).get('file')
+    return bool(published_file) and Path(published_file).stem != record.export_name
+
+
+def _name_claims(settings, previous, checked):
+    """Plan which checked Separate clips return to, reuse or leave a published file."""
+    rows = {row['id']: row for row in previous.get('clips', [])}
+    renamed = [record for record in checked if _is_renamed(record, rows)]
+    vacated = {record.clip_id for record in renamed}
+    claims = []
+    for record in checked:
+        held = {other.clip_id for other in settings.clips if other != record}
+        claim = core.classify_name_claim(previous, record.clip_id, record.export_name, _binding(record), held, vacated)
+        if claim:
+            claims.append(dict(claim, record=record, token=core.takeover_token(previous, record.clip_id, claim['owner'],
+                                                                                _binding(record), record.start, record.end)))
+    return renamed, claims
+
+
+def _separate_direct(settings):
+    return settings is not None and settings.delivery == 'DIRECT' and settings.export_layout == 'SEPARATE' and settings.output_folder
+
+
+def _reuse_plan(settings):
+    if not _separate_direct(settings) or not settings.rig:
+        return []
+    refresh(settings)
+    previous = _read_publication(settings, Path(bpy.path.abspath(settings.output_folder)) / core.metadata_file(settings.profile_id))
+    return [claim for claim in _name_claims(settings, previous, _checked(settings))[1] if claim['kind'] == 'reuse']
+
+
+def _name_hint(settings, record):
+    if not _separate_direct(settings) or record.retired or record.state != 'READY' or not settings.profile_id:
+        return None
+    try:
+        path = Path(bpy.path.abspath(settings.output_folder)) / core.metadata_file(settings.profile_id)
+        stat = path.stat()
+        key = (stat.st_mtime_ns, stat.st_size)
+        cached = _publication_cache.get(str(path))
+        if cached is None or cached[0] != key:
+            cached = (key, json.loads(path.read_text(encoding='utf-8')))
+            _publication_cache[str(path)] = cached
+        rows = {row['id']: row for row in cached[1].get('clips', [])}
+        vacated = {record.clip_id} if _is_renamed(record, rows) else set()
+        held = {other.clip_id for other in settings.clips if other != record}
+        claim = core.classify_name_claim(cached[1], record.clip_id, record.export_name, _binding(record), held, vacated)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if claim is None:
+        return None
+    previous_source = claim['owner'].get('sourceBinding', {}).get('strip') or claim['owner'].get('name', '')
+    if claim['kind'] == 'restore':
+        return "Returns to this clip's earlier FBX.", 'INFO'
+    if claim['kind'] == 'reuse':
+        return f"Last held '{previous_source}'. Export will ask first.", 'ERROR'
+    return f"In use by clip '{claim['owner'].get('name', '')}'. Choose another name.", 'ERROR'
+
+
+def export_package_steps(context, settings, cancel=None, direct=False, confirm_removals=(), confirmed_publication=None, confirm_takeovers=()):
     global _busy
     if settings is None:
         raise ValueError('Choose the character rig.')
@@ -315,14 +381,26 @@ def export_package_steps(context, settings, cancel=None, direct=False, confirm_r
     if direct and settings.source_file and source_file != settings.source_file:
         raise ValueError('This is a renamed or copied .blend. In Settings, choose Keep Existing Outputs or New Character Export once.')
     pending_ids = {}
+    takeover_owners = {}
     if direct:
-        for record in checked:
-            if record.published_name and record.export_name != record.published_name:
-                pending_ids[record.clip_id] = core.new_id()
         if is_combined:
+            for record in checked:
+                if record.published_name and record.export_name != record.published_name:
+                    pending_ids[record.clip_id] = core.new_id()
             core.validate_names([SimpleNamespace(export_name=settings.combined_name,source_name='Combined File',retired=False,state='READY')])
             core.validate_direct_targets(root, settings.profile_id, [(settings.profile_id, settings.combined_name)])
         else:
+            renamed, claims = _name_claims(settings, previous, checked)
+            for record in renamed:
+                pending_ids[record.clip_id] = core.new_id()
+            for claim in claims:
+                filename = claim['record'].export_name + '.fbx'
+                if claim['kind'] == 'in_use':
+                    raise ValueError(f"{filename} belongs to another clip ({claim['owner'].get('name', '')}). Choose another export name, or use Replace Source on that clip.")
+                if claim['kind'] == 'reuse' and claim['token'] not in confirm_takeovers:
+                    raise ValueError(f"{filename} belonged to a removed clip. Press Export and confirm reusing it, or choose another export name.")
+                pending_ids[claim['record'].clip_id] = claim['owner']['id']
+                takeover_owners[claim['owner']['id']] = claim['owner']
             core.validate_direct_targets(root, settings.profile_id, [(pending_ids.get(r.clip_id, r.clip_id), r.export_name) for r in checked])
     if any(r.enabled and not r.retired and r.state == 'AMBIGUOUS' for r in settings.clips):
         raise ValueError('Relink ambiguous clip sources before exporting.')
@@ -460,6 +538,8 @@ def export_package_steps(context, settings, cancel=None, direct=False, confirm_r
                     manifest['warnings'].extend(record.export_name + ': ' + message for message in reduction['warnings'])
                 take = _take_name(path)
                 clip_id = pending_ids.get(record.clip_id, record.clip_id)
+                if clip_id in takeover_owners and takeover_owners[clip_id].get('takeName') != take:
+                    raise ValueError(f"'{record.export_name}' has a different FBX take name than its earlier file, so Unity could lose its settings. Restore the scene name or choose another export name.")
                 old_records[clip_id] = dict(id=clip_id, name=record.export_name, state='present', enabled=True,
                     exported=True, file=relative, sha256=core.digest(path), takeName=take, startFrame=record.start,
                     endFrame=record.end, fps=fps, duration=(record.end - record.start) / fps,
@@ -480,6 +560,9 @@ def export_package_steps(context, settings, cancel=None, direct=False, confirm_r
                     item.update(file='', sha256='')
                 elif not is_combined and previous.get('layout') == 'combined' and record not in checked:
                     item.update(file='', sha256='')
+                elif direct and not is_combined and record not in checked and item.get('file'):
+                    # An unexported rename has not reached this file yet.
+                    item['name'] = Path(item['file']).stem
                 manifest['clips'].append(item)
             if direct:
                 current_ids = {row['id'] for row in manifest['clips']}
@@ -534,9 +617,9 @@ def export_package(context, settings, cancel=None):
             return finished.value
 
 
-def export_direct(context, settings, cancel=None, confirm_removals=(), confirmed_publication=None):
+def export_direct(context, settings, cancel=None, confirm_removals=(), confirmed_publication=None, confirm_takeovers=()):
     steps = export_package_steps(context, settings, cancel, direct=True, confirm_removals=confirm_removals,
-                                confirmed_publication=confirmed_publication)
+                                confirmed_publication=confirmed_publication, confirm_takeovers=confirm_takeovers)
     while True:
         try:
             next(steps)
@@ -638,24 +721,41 @@ class CAE_OT_export(bpy.types.Operator):
     bl_idname = 'cae.export_checked'
     bl_label = 'Export'
     confirmed_removals: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
+    confirmed_takeovers: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
 
     def invoke(self, context, _event):
         if _busy:
             self.report({'INFO'}, 'An export is already running.')
             return {'CANCELLED'}
         try:
-            removed, previous = _combined_plan(context, settings_for(context.scene))
+            settings = settings_for(context.scene)
+            removed, previous = _combined_plan(context, settings)
+            reuses = _reuse_plan(settings)
         except Exception as error:
             self.report({'ERROR'}, str(error))
             return {'CANCELLED'}
         self.confirmed_removals = ','.join(row['id'] for row in removed)
         self._confirmed_publication = previous if removed else None
         self._removals = removed
+        self.confirmed_takeovers = ','.join(claim['token'] for claim in reuses)
+        self._reuses = [(claim['record'].export_name, claim['owner'].get('sourceBinding', {}).get('strip') or claim['owner'].get('name', ''),
+                         claim['record'].source_name, claim['record'].start, claim['record'].end) for claim in reuses]
         if removed:
             return context.window_manager.invoke_props_dialog(self, width=440, confirm_text='Replace FBX')
+        if reuses:
+            return context.window_manager.invoke_props_dialog(self, width=480, confirm_text='Reuse FBX')
         return self.execute(context)
 
     def draw(self, _context):
+        reuses = getattr(self, '_reuses', [])
+        if reuses:
+            self.layout.label(text='Reuse files from removed clips?', icon='ERROR')
+            for name, old_source, new_source, start, end in reuses[:8]:
+                self.layout.label(text=f'{name}.fbx: {old_source} becomes {new_source} ({start:g}-{end:g})')
+            if len(reuses) > 8:
+                self.layout.label(text=f'and {len(reuses)-8} more files')
+            self.layout.label(text='Unity references and events on these files will apply to the new animation.')
+            return
         removed = getattr(self, '_removals', [])
         self.layout.label(text=f'Remove {len(removed)} published clips from this FBX?', icon='ERROR')
         for row in removed[:8]:
@@ -681,7 +781,8 @@ class CAE_OT_export(bpy.types.Operator):
                 self._window_manager = context.window_manager
                 self.steps = export_package_steps(context, profile, direct=profile.delivery == 'DIRECT',
                     confirm_removals=set(filter(None, getattr(self, 'confirmed_removals', '').split(','))),
-                    confirmed_publication=getattr(self, '_confirmed_publication', None))
+                    confirmed_publication=getattr(self, '_confirmed_publication', None),
+                    confirm_takeovers=set(filter(None, getattr(self, 'confirmed_takeovers', '').split(','))))
                 self.timer = context.window_manager.event_timer_add(0.1, window=context.window)
                 _active_export = self
                 if hasattr(bpy.app, 'handlers'):
@@ -697,7 +798,8 @@ class CAE_OT_export(bpy.types.Operator):
         try:
             profile = settings_for(context.scene)
             if profile.delivery == 'DIRECT':
-                export_direct(context, profile, confirm_removals=set(filter(None, self.confirmed_removals.split(','))))
+                export_direct(context, profile, confirm_removals=set(filter(None, self.confirmed_removals.split(','))),
+                              confirm_takeovers=set(filter(None, self.confirmed_takeovers.split(','))))
             else:
                 export_package(context, profile)
             self.report({'INFO'}, settings_for(context.scene).last_report)
@@ -911,7 +1013,11 @@ class CAE_PT_export(bpy.types.Panel):
             box.prop(settings, 'show_removed')
             box.operator('cae.refresh', text='Refresh Clips', icon='FILE_REFRESH')
             if settings.clips and settings.active_clip < len(settings.clips):
-                box.prop(settings.clips[settings.active_clip], 'export_name', text='Export Name')
+                record = settings.clips[settings.active_clip]
+                box.prop(record, 'export_name', text='Export Name')
+                hint = _name_hint(settings, record)
+                if hint:
+                    box.label(text=hint[0], icon=hint[1])
             advanced = box.box()
             advanced.label(text='Matching model export settings')
             advanced.prop(settings, 'scale_mode')

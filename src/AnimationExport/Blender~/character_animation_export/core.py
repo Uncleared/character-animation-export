@@ -167,6 +167,49 @@ def validate_direct_targets(root, profile_id, rows):
             raise ValueError(f"{filename} changed outside this exporter. Keep that version or choose another export name.")
 
 
+def separate_owner(previous, filename):
+    """Return the single clip row that owns a Separate FBX, if its ownership is unambiguous."""
+    if previous.get('layout') == 'combined':
+        return None
+    key = filename.casefold()
+    rows = [row for row in previous.get('clips', []) if row.get('file', '').casefold() == key]
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    if previous.get('schemaVersion') == COMBINED_SCHEMA:
+        outputs = [item for item in previous.get('outputs', []) if item.get('file', '').casefold() == key]
+        if len(outputs) != 1 or outputs[0].get('kind') != 'separate' or outputs[0].get('id') != row['id'] \
+                or outputs[0].get('sha256') != row.get('sha256'):
+            return None
+    return row
+
+
+def classify_name_claim(previous, clip_id, name, binding, held_ids, vacated_ids):
+    """Classify a clip's claim on name.fbx.
+
+    None: the file has no recoverable owner other than this clip.
+    restore: the clip is returning to a file published from its own source.
+    reuse: a retired clip's file would receive this animation, which needs consent.
+    in_use: another clip still holds the file.
+    """
+    owner = separate_owner(previous, name + '.fbx')
+    if owner is None or owner['id'] == clip_id:
+        return None
+    leaving = owner['id'] in vacated_ids
+    if owner['id'] in held_ids - vacated_ids or (owner.get('state') != 'removed' and not leaving):
+        return dict(kind='in_use', owner=owner)
+    current = next((row for row in previous.get('clips', []) if row['id'] == clip_id), None)
+    same_source = current is not None and current.get('sourceBinding') == binding == owner.get('sourceBinding')
+    return dict(kind='restore' if same_source and not leaving else 'reuse', owner=owner)
+
+
+def takeover_token(previous, clip_id, owner, binding, start, end):
+    """Identify one exact file reuse, so consent cannot apply to a different one."""
+    evidence = [previous.get('profileId'), previous.get('publicationId'), clip_id, owner['id'],
+                owner.get('file'), owner.get('sha256'), binding, start, end]
+    return hashlib.sha256(json.dumps(evidence, sort_keys=True).encode('utf-8')).hexdigest()
+
+
 def publish_direct(root, manifest, staged_files):
     """Publish complete same-volume files, preserving Unity metadata and failed recovery."""
     root = export_root(root, allow_assets=True)

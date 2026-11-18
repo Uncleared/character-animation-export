@@ -81,9 +81,49 @@ public static class ArtistIterationSmoke
             File.WriteAllText(Path.Combine(Project,"restart-identities.json"),JsonUtility.ToJson(new Identities{names=original.Keys.ToArray(),ids=original.Values.ToArray()},true));
             Copy("RecoveryRemoved",recoveryRoot);
             Check(Clips(path).Length==1,"retired clip and its native settings archived before restart");
+            NameChanges();
             Finish(true);
         }
         catch(Exception error){Finish(false,error);}
+    }
+    static string[] CopySeparate(string label,string root)
+    {
+        var from=Path.Combine(Project,"ArtistFixtures",label);
+        foreach(var file in Directory.GetFiles(from,"*",SearchOption.AllDirectories).Where(file=>!file.EndsWith(".meta")).OrderBy(file=>file.EndsWith(".json")?0:1))
+        {
+            var target=root+"/"+file.Substring(from.Length+1).Replace('\\','/');
+            if(File.Exists(target)&&File.ReadAllBytes(file).SequenceEqual(File.ReadAllBytes(target)))continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);AssetDatabase.ImportAsset(target,ImportAssetOptions.ForceSynchronousImport);
+        }
+        var sources=DirectAnimationMetadata.Sources(root).Where(source=>File.Exists(source.assetPath)).ToArray();
+        var settings=sources[0].Settings;
+        if(settings==null){settings=ScriptableObject.CreateInstance<AnimationImportSettings>();settings.profileId=sources[0].profile.profileId;settings.rig=CharacterRig.Generic;AssetDatabase.CreateAsset(settings,sources[0].SettingsPath);AssetDatabase.SaveAssetIfDirty(settings);}
+        foreach(var source in sources)DirectAnimationImporter.Reconcile(source.assetPath);
+        return sources.Select(source=>source.assetPath).OrderBy(path=>path,StringComparer.Ordinal).ToArray();
+    }
+    static void NameChanges()
+    {
+        var root="Assets/Artist/NameChanges";
+        var basePaths=CopySeparate("RenameBase",root);
+        foreach(var item in basePaths)Seed(item);
+        var moved=CopySeparate("RenameMoved",root).Except(basePaths).Single();Seed(moved);
+        var paths=basePaths.Append(moved).ToArray();
+        var ids=paths.ToDictionary(item=>item,item=>Identity(Clips(item).Single()));
+        var controller=AnimatorController.CreateAnimatorControllerAtPath(root+"/Reference.controller");
+        foreach(var item in paths)controller.layers[0].stateMachine.AddState(Path.GetFileNameWithoutExtension(item)).motion=Clips(item).Single();
+        EditorUtility.SetDirty(controller);AssetDatabase.SaveAssetIfDirty(controller);
+        foreach(var label in new[]{"RenameRestored","RenameReused"})
+        {
+            CopySeparate(label,root);
+            foreach(var item in paths)
+            {
+                var clip=Clips(item).Single();
+                Check(Identity(clip)==ids[item],label+" keeps GUID and local ID "+item);
+                Cue(clip,clip.length*0.2f);
+                Check(controller.layers[0].stateMachine.states.Single(state=>state.state.name==Path.GetFileNameWithoutExtension(item)).state.motion==clip,label+" keeps Animator reference "+item);
+                Check(!DirectAnimationImporter.Reconcile(item),label+" converges "+item);
+            }
+        }
     }
     public static void CompleteRestart()
     {
